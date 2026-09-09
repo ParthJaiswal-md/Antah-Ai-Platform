@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antah.ai — Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-inner">
+      <div class="brand-big">Antah.ai</div>
+      <div class="auth-card card">
+        <div id="loginError" class="form-error" style="display:none;"></div>
+        <form id="loginForm" novalidate>
+          <div class="field">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;" id="loginBtn">Login</button>
+          <div class="center" id="wantRegisterWrap" style="display:none; margin-top:.9rem;">
+            <a href="#" id="wantRegister">Want to register instead?</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {% include '_register_modal.html' %}
+  <script>
+    (function () {
+      var form = document.getElementById('loginForm');
+      var errBox = document.getElementById('loginError');
+      var pwd = document.getElementById('password');
+      var failed = false;
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        errBox.style.display = 'none';
+        var username = document.getElementById('username').value.trim();
+        var password = pwd.value;
+        if (!username || !password) {
+          errBox.textContent = 'Please enter both username and password.';
+          errBox.style.display = 'block';
+          return;
+        }
+        fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username, password: password })
+        }).then(function (r) {
+          return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+        }).then(function (res) {
+          if (res.ok) {
+            window.location.href = res.data.redirect || '/recommendation';
+          } else {
+            failed = true;
+            pwd.value = '';
+            errBox.textContent = res.data.error || 'Incorrect password. Please try again.';
+            errBox.style.display = 'block';
+            document.getElementById('wantRegisterWrap').style.display = 'block';
+            document.getElementById('username').focus();
+          }
+        }).catch(function () {
+          errBox.textContent = 'Could not reach the server. Please try again.';
+          errBox.style.display = 'block';
+        });
+      });
+
+      document.getElementById('wantRegister').addEventListener('click', function (e) {
+        e.preventDefault();
+        document.getElementById('registerModal').classList.add('active');
+      });
+    })();
+  </script>
+</body>
+</html>

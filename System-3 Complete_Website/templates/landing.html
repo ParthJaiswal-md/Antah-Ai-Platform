@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antah.ai — Skill Intelligence Platform</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-inner">
+      <div class="brand-big">Antah.ai</div>
+      <p class="auth-sub">
+        Antah.ai is an AI-powered Skill Intelligence Platform built for India's Official Statistical System.
+        It identifies each official's skill gaps against their role, recommends personalized training from a
+        course catalogue, and auto-generates quizzes from real lecture content to verify what's actually been
+        learned — closing the loop between recommended training and real capability.
+      </p>
+      <div class="center mt-4">
+        <a class="btn btn-primary" href="{{ url_for('login') }}">Login</a>
+        <button type="button" class="btn btn-outline" data-open-modal>Register</button>
+      </div>
+    </div>
+  </div>
+
+  {% include '_register_modal.html' %}
+</body>
+</html>

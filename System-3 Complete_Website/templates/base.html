@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Antah.ai{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <nav class="nav">
+    <a class="nav-brand" href="{{ url_for('recommendation') }}">Antah.ai</a>
+    <div class="nav-right">
+      {% block nav_back %}{% endblock %}
+      <div class="avatar-wrap">
+        <div class="avatar" id="avatarBtn" title="{{ current_user }}" tabindex="0">{{ current_user[0]|upper }}</div>
+        <div class="dropdown" id="dropdown">
+          <div class="hi">Hi, {{ current_user }}!</div>
+          <a href="{{ url_for('profile') }}">Profile</a>
+          <a class="logout" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    (function () {
+      var btn = document.getElementById('avatarBtn');
+      var dd = document.getElementById('dropdown');
+      function toggle(e) {
+        e.stopPropagation();
+        dd.classList.toggle('open');
+      }
+      function close() { dd.classList.remove('open'); }
+      btn.addEventListener('click', toggle);
+      btn.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(e); }
+      });
+      document.addEventListener('click', close);
+
+      // Back button: rendered only on the profile page (which overrides the
+      // header's back-button block). Go to the previous page; if there is none
+      // in this tab, fall back to the intake rather than leaving the app.
+      var back = document.getElementById('backBtn');
+      if (back) back.addEventListener('click', function () {
+        if (window.history.length > 1) { window.history.back(); }
+        else { window.location.href = {{ url_for('recommendation')|tojson }}; }
+      });
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

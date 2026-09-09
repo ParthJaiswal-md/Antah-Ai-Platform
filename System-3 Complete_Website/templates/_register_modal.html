@@ -1,0 +1,24 @@
+<!-- Shared register modal — used on the landing page and the login page. -->
+<div class="modal" id="registerModal">
+  <div class="modal-card">
+    <button type="button" class="modal-close" data-close-modal aria-label="Close">&times;</button>
+    <h1 style="font-size:1.4rem; color:var(--brand-deep); margin-bottom:1.25rem;">Hello user!</h1>
+    <div id="regError" class="form-error" style="display:none;"></div>
+    <form id="registerForm" novalidate>
+      <div class="field">
+        <label for="regUsername">Username</label>
+        <input type="text" id="regUsername" name="username" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="regPassword">Password</label>
+        <input type="password" id="regPassword" name="password" autocomplete="new-password" required>
+        <p class="notice" style="margin-top:.6rem;">
+          Passwords cannot be changed at this time, as the platform is currently in beta.
+          To use a different password, please create a new account.
+        </p>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Register</button>
+    </form>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/register.js') }}"></script>
