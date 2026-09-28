@@ -8,14 +8,14 @@
 </head>
 <body>
   <nav class="nav">
-    <a class="nav-brand" href="{{ url_for('recommendation') }}">Antah.ai</a>
+    <a class="nav-brand" href="{{ url_for('landing') }}">Antah.ai</a>
     <div class="nav-right">
       {% block nav_back %}{% endblock %}
       <div class="avatar-wrap">
         <div class="avatar" id="avatarBtn" title="{{ current_user }}" tabindex="0">{{ current_user[0]|upper }}</div>
         <div class="dropdown" id="dropdown">
           <div class="hi">Hi, {{ current_user }}!</div>
-          <a href="{{ url_for('profile') }}">Profile</a>
+          {% if current_role == 'learner' %}<a href="{{ url_for('profile') }}">Profile</a>{% endif %}
           <a class="logout" href="{{ url_for('logout') }}">Logout</a>
         </div>
       </div>

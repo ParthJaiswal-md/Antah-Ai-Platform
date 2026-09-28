@@ -2,8 +2,11 @@
 Antah.ai (System 3) - SQLite persistence layer.
 
 Three tables back the whole web app:
-  users          - auth only (username + password hash). System 1/2 know nothing
-                   about usernames, so this is the only account data S3 tracks.
+  users          - auth (username + password hash), the account's role
+                   (learner / trainer / admin) and, for learners, the System 1
+                   employee_id their intake is registered under. System 1/2 know
+                   nothing about usernames, so this is the only account data S3
+                   tracks.
   submissions    - one row per employee intake form the logged-in user submits
                    through System 1, storing a snapshot of what was submitted
                    plus the exact recommendations System 1 returned (the profile
@@ -27,6 +30,8 @@ from datetime import datetime, timezone
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get("ANTAHAI_DB", os.path.join(BASE_DIR, "antahai.db"))
 
+ROLES = ("learner", "trainer", "admin")
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -47,7 +52,9 @@ def init_db() -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'learner',
+                employee_id TEXT
             );
 
             CREATE TABLE IF NOT EXISTS submissions (
@@ -87,7 +94,19 @@ def init_db() -> None:
             );
             """
         )
+        _migrate_users(conn)
         conn.commit()
+
+
+def _migrate_users(conn: sqlite3.Connection) -> None:
+    """Add columns introduced after the first release to an existing users
+    table (CREATE TABLE IF NOT EXISTS leaves old tables as they were).
+    Idempotent; pre-existing accounts become learners with no employee_id."""
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
+    if "role" not in columns:
+        conn.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'learner'")
+    if "employee_id" not in columns:
+        conn.execute("ALTER TABLE users ADD COLUMN employee_id TEXT")
 
 
 # ---------------------------------------------------------------------------
@@ -95,14 +114,41 @@ def init_db() -> None:
 # ---------------------------------------------------------------------------
 
 
-def create_user(username: str, password_hash: str) -> int:
+def create_user(username: str, password_hash: str, role: str = "learner") -> int:
+    if role not in ROLES:
+        raise ValueError(f"unknown role '{role}'")
     with closing(connect()) as conn:
         cur = conn.execute(
-            "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
-            (username, password_hash, _now()),
+            "INSERT INTO users (username, password_hash, created_at, role) VALUES (?, ?, ?, ?)",
+            (username, password_hash, _now(), role),
         )
         conn.commit()
         return cur.lastrowid
+
+
+def upsert_user(username: str, password_hash: str, role: str) -> int:
+    """Create the account, or reset an existing one's password + role (used to
+    seed the demo trainer/admin accounts from the environment)."""
+    existing = get_user_by_username(username)
+    if not existing:
+        return create_user(username, password_hash, role)
+    if role not in ROLES:
+        raise ValueError(f"unknown role '{role}'")
+    with closing(connect()) as conn:
+        conn.execute(
+            "UPDATE users SET password_hash = ?, role = ? WHERE id = ?",
+            (password_hash, role, existing["id"]),
+        )
+        conn.commit()
+    return existing["id"]
+
+
+def set_user_employee_id(user_id: int, employee_id: str) -> None:
+    with closing(connect()) as conn:
+        conn.execute(
+            "UPDATE users SET employee_id = ? WHERE id = ?", (employee_id, user_id)
+        )
+        conn.commit()
 
 
 def get_user_by_username(username: str) -> dict | None:
@@ -183,6 +229,17 @@ def list_submissions(user_id: int) -> list[dict]:
             (user_id,),
         ).fetchall()
     return [_submission_row(r) for r in rows]
+
+
+def latest_submission_for_employee(user_id: int, employee_id: str) -> dict | None:
+    """The user's newest submission for this employee_id (a learner's home)."""
+    with closing(connect()) as conn:
+        row = conn.execute(
+            "SELECT * FROM submissions WHERE user_id = ? AND employee_id = ? "
+            "ORDER BY id DESC LIMIT 1",
+            (user_id, employee_id),
+        ).fetchone()
+    return _submission_row(row) if row else None
 
 
 # ---------------------------------------------------------------------------

@@ -91,6 +91,21 @@ YT_CLIENTS = [
     if c.strip()
 ]
 
+# Demo trainer/admin accounts, seeded (created, or password + role reset) at
+# startup. Self-registration only ever creates learners, so these are the only
+# way to get the other roles. An account is skipped unless its password env
+# var is set - there are no default passwords.
+def demo_accounts() -> list[tuple[str, str, str]]:
+    """[(role, username, password)] read from the environment at call time."""
+    return [
+        ("trainer",
+         os.environ.get("ANTAHAI_TRAINER_USERNAME", "trainer").strip(),
+         os.environ.get("ANTAHAI_TRAINER_PASSWORD", "")),
+        ("admin",
+         os.environ.get("ANTAHAI_ADMIN_USERNAME", "admin").strip(),
+         os.environ.get("ANTAHAI_ADMIN_PASSWORD", "")),
+    ]
+
 # Quiz retake limit is a UI-level notice only (per spec) - no backend
 # enforcement. This constant is what the copy on the results page quotes.
 ONE_ATTEMPT_NOTICE = (

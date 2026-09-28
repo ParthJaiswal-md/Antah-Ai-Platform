@@ -32,6 +32,10 @@ S1_REGISTER_TIMEOUT = 60    # registration computes gaps + recs server-side
 class S1Error(Exception):
     """System 1 returned an error response (with its detail message)."""
 
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status  # HTTP status code, e.g. 404 for unknown employee
+
 
 class S1Unavailable(Exception):
     """System 1 could not be reached at all."""
@@ -63,7 +67,7 @@ def _request(method: str, url: str, payload=None, timeout: float = 15.0) -> dict
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             raw = resp.read()
     except urllib.error.HTTPError as err:
-        raise S1Error(_read_error_detail(err.read(), err.code)) from None
+        raise S1Error(_read_error_detail(err.read(), err.code), err.code) from None
     except urllib.error.URLError as err:
         raise S1Unavailable(
             f"Cannot reach the recommendation engine at {settings.S1_URL} "
@@ -143,4 +147,48 @@ def register_employee(payload: dict, top_n: int = 5) -> dict:
         settings.s1_url(f"/employees/register?{query}"),
         payload=payload,
         timeout=S1_REGISTER_TIMEOUT,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Existing employees (a learner re-submitting intake keeps their employee_id)
+# ---------------------------------------------------------------------------
+
+
+def _employee_path(employee_id: str, suffix: str) -> str:
+    return f"/employees/{urllib.parse.quote(employee_id, safe='')}/{suffix}"
+
+
+def get_employee_profile(employee_id: str) -> dict:
+    """GET /employees/{id}/profile. Raises S1Error (status 404) if unknown."""
+    return _request(
+        "GET", settings.s1_url(_employee_path(employee_id, "profile")),
+        timeout=S1_CONNECT_TIMEOUT,
+    )
+
+
+def compute_employee(payload: dict, top_n: int = 5) -> dict:
+    """POST /employees/compute?top_n=N - same pipeline and ComputeResponse as
+    register, but nothing is persisted (no new Dataset-5 row)."""
+    query = urllib.parse.urlencode({"top_n": top_n})
+    return _request(
+        "POST",
+        settings.s1_url(f"/employees/compute?{query}"),
+        payload=payload,
+        timeout=S1_REGISTER_TIMEOUT,
+    )
+
+
+def update_employee_skills(employee_id: str, self_rated: dict | None = None,
+                           quiz_verified: dict | None = None) -> dict:
+    """POST /employees/{id}/skills - merge new levels into System 1's stored
+    profile (persisted to Dataset-3/5). Only non-empty dicts are sent."""
+    payload = {}
+    if self_rated:
+        payload["self_rated_skills"] = self_rated
+    if quiz_verified:
+        payload["quiz_verified_skills"] = quiz_verified
+    return _request(
+        "POST", settings.s1_url(_employee_path(employee_id, "skills")),
+        payload=payload, timeout=S1_REGISTER_TIMEOUT,
     )

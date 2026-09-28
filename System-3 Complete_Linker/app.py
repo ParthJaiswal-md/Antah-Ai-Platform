@@ -17,6 +17,11 @@ header/info dropdown):
     /quiz/<id>             quiz-taking (S2-generated) or status while generating
     /quiz/<id>/results     score / analysis page
     /profile               history for this username
+    /trainer, /admin       role dashboards (trainer / admin accounts)
+
+Roles: every self-registered account is a learner; trainer/admin accounts are
+seeded from ANTAHAI_{TRAINER,ADMIN}_{USERNAME,PASSWORD}. Learner pages require
+the learner role, and a learner keeps one System 1 employee_id across intakes.
 """
 
 from __future__ import annotations
@@ -66,8 +71,12 @@ RESULTS_LEAD = "On the basis of your current skill portfolio, here are your reco
 
 @app.context_processor
 def inject_user() -> dict:
-    """Make ``current_user`` (username) available to every base.html page."""
-    return {"current_user": session.get("username", "")}
+    """Make ``current_user`` (username) and ``current_role`` available to every
+    base.html page (role is refreshed from the DB by ``role_required``)."""
+    return {
+        "current_user": session.get("username", ""),
+        "current_role": session.get("role", "learner"),
+    }
 
 
 def _hash_password(username: str, password: str) -> str:
@@ -99,6 +108,53 @@ def login_required(view):
     return wrapped
 
 
+def role_required(*roles: str):
+    """Like login_required, plus the account's role (read from the DB on every
+    request, so role changes apply immediately) must be one of ``roles``.
+    Anonymous or deleted accounts go to login; the wrong role gets a 403."""
+    def decorator(view):
+        @wraps(view)
+        def wrapped(*args, **kwargs):
+            user = db.get_user_by_id(_require_user()) if "user_id" in session else None
+            if not user:
+                session.clear()
+                return redirect(url_for("login"))
+            session["role"] = user["role"]
+            if user["role"] not in roles:
+                abort(403)
+            return view(*args, **kwargs)
+
+        return wrapped
+
+    return decorator
+
+
+def _home_url(user: dict) -> str:
+    """Where an account lands after login: its role's dashboard; for a learner
+    with a stored employee_id, their latest recommendations; else the intake."""
+    role = user.get("role") or "learner"
+    if role == "admin":
+        return url_for("admin_dashboard")
+    if role == "trainer":
+        return url_for("trainer_dashboard")
+    if user.get("employee_id"):
+        latest = db.latest_submission_for_employee(user["id"], user["employee_id"])
+        if latest:
+            return url_for("submission_results", submission_id=latest["id"])
+    return url_for("recommendation")
+
+
+def seed_demo_accounts() -> None:
+    """Create (or reset the password + role of) the env-configured demo
+    trainer/admin accounts. Accounts without a password env var are skipped."""
+    for role, username, password in settings.demo_accounts():
+        if not username or not password:
+            logger.info("demo %s account not seeded (no password configured)", role)
+            continue
+        db.upsert_user(username, _hash_password(username, password), role)
+        logger.info("demo %s account ready: %s", role, username)
+
+
 def _require_user() -> int:
     return int(session.get("user_id", 0))
 
@@ -128,17 +184,29 @@ def _json_body() -> dict | None:
 # Landing / auth
 # ---------------------------------------------------------------------------
 
+def _session_user() -> dict | None:
+    """The logged-in account, or None (clearing a session whose account is gone)."""
+    if "user_id" not in session:
+        return None
+    user = db.get_user_by_id(_require_user())
+    if not user:
+        session.clear()
+    return user
+
+
 @app.route("/")
 def landing():
-    if "user_id" in session:
-        return redirect(url_for("recommendation"))
+    user = _session_user()
+    if user:
+        return redirect(_home_url(user))
     return render_template("landing.html")
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if "user_id" in session:
-        return redirect(url_for("recommendation"))
+    user = _session_user()
+    if user:
+        return redirect(_home_url(user))
 
     if request.method == "POST":
         body = _json_body() or request.form
@@ -149,7 +217,8 @@ def login():
             session.clear()
             session["user_id"] = user["id"]
             session["username"] = user["username"]
-            return jsonify({"ok": True, "redirect": url_for("recommendation")})
+            session["role"] = user["role"]
+            return jsonify({"ok": True, "redirect": _home_url(user)})
         return jsonify({"ok": False, "error": "Incorrect password. Please try again."}), 401
 
     return render_template("login.html")
@@ -166,7 +235,8 @@ def api_register():
         return jsonify({"ok": False, "error": "Please fill in both username and password."}), 400
     if db.get_user_by_username(username):
         return jsonify({"ok": False, "error": "Username already taken. Please log in or choose another."}), 409
-    db.create_user(username, _hash_password(username, password))
+    # Self-registration always creates a learner; any "role" in the body is ignored.
+    db.create_user(username, _hash_password(username, password), role="learner")
     # Registration never logs the user in directly - it routes through login.
     return jsonify({"ok": True})
 
@@ -205,7 +275,7 @@ def _build_meta() -> dict | None:
 
 
 @app.route("/recommendation", methods=["GET", "POST"])
-@login_required
+@role_required("learner")
 def recommendation():
     if request.method == "POST":
         return _register_employee()
@@ -258,8 +328,17 @@ def _register_employee():
     if not isinstance(payload["work_experience_years"], int):
         return jsonify({"ok": False, "error": "Work experience must be a whole number of years."}), 400
 
+    # A learner keeps one System 1 employee: the first intake registers it and
+    # stores the id on the account; later intakes recompute against that id.
+    user_id = _require_user()
+    stored_employee_id = (db.get_user_by_id(user_id) or {}).get("employee_id")
     try:
-        result = s1_client.register_employee(payload, top_n=5)
+        result = None
+        if stored_employee_id:
+            result = _recompute_employee(stored_employee_id, payload)
+        if result is None:
+            result = s1_client.register_employee(payload, top_n=5)
+            db.set_user_employee_id(user_id, result["employee"]["employee_id"])
     except s1_client.S1Unavailable as err:
         return jsonify({"ok": False, "error": str(err)}), 503
     except s1_client.S1Error as err:
@@ -283,7 +362,7 @@ def _register_employee():
         enriched.append(rec)
 
     submission_id = db.create_submission(
-        _require_user(),
+        user_id,
         {
             "employee_id": employee["employee_id"],
             "name": employee.get("name") or "",
@@ -295,11 +374,41 @@ def _register_employee():
             "work_experience_years": employee.get("work_experience_years"),
             "previous_trainings": employee.get("previous_trainings") or [],
             "self_rated_skills": employee.get("self_rated_skills") or {},
-            "quiz_verified_skills": {},
+            "quiz_verified_skills": employee.get("quiz_verified_skills") or {},
             "recommendations": enriched,
         },
     )
     return jsonify({"ok": True, "redirect": url_for("submission_results", submission_id=submission_id)})
+
+
+def _recompute_employee(employee_id: str, payload: dict) -> dict | None:
+    """Gaps + recommendations for an already-registered employee, without
+    creating a new System 1 record. Carries over the quiz-verified levels
+    System 1 holds for them and syncs the new self-ratings back to it.
+
+    Returns None when System 1 no longer knows the id (e.g. its Dataset-5 was
+    reset) so the caller registers a fresh employee instead.
+    """
+    try:
+        stored = s1_client.get_employee_profile(employee_id)
+    except s1_client.S1Error as err:
+        if err.status == 404:
+            logger.warning("employee %s unknown to System 1; registering anew", employee_id)
+            return None
+        raise
+    payload = dict(
+        payload,
+        employee_id=employee_id,
+        quiz_verified_skills=stored.get("quiz_verified_skills") or {},
+    )
+    result = s1_client.compute_employee(payload, top_n=5)
+    if payload["self_rated_skills"]:
+        try:
+            s1_client.update_employee_skills(employee_id, self_rated=payload["self_rated_skills"])
+        except (s1_client.S1Unavailable, s1_client.S1Error) as err:
+            # Results above are already correct; only S1's stored copy lags.
+            logger.warning("could not sync self-ratings for %s: %s", employee_id, err)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -341,7 +450,7 @@ def _recommendation_summary(submission: dict) -> tuple[str, str]:
 
 
 @app.route("/recommendation/results/<int:submission_id>")
-@login_required
+@role_required("learner")
 def submission_results(submission_id: int):
     submission = _owned_submission(submission_id)
 
@@ -420,7 +529,7 @@ def _canned_quiz() -> list[dict]:
 
 
 @app.route("/quiz/start", methods=["POST"])
-@login_required
+@role_required("learner")
 def quiz_start():
     submission_id = int(request.form.get("submission_id") or 0)
     course_id = (request.form.get("course_id") or "").strip()
@@ -460,7 +569,7 @@ def quiz_start():
 
 
 @app.route("/quiz/<int:attempt_id>", methods=["GET", "POST"])
-@login_required
+@role_required("learner")
 def quiz_attempt(attempt_id: int):
     attempt = _owned_attempt(attempt_id)
 
@@ -497,14 +606,14 @@ def quiz_attempt(attempt_id: int):
 
 
 @app.route("/quiz/<int:attempt_id>/status.json")
-@login_required
+@role_required("learner")
 def quiz_status_json(attempt_id: int):
     attempt = _owned_attempt(attempt_id)
     return jsonify({"status": attempt["status"], "error": attempt.get("error")})
 
 
 @app.route("/quiz/<int:attempt_id>/results")
-@login_required
+@role_required("learner")
 def quiz_results(attempt_id: int):
     attempt = _owned_attempt(attempt_id)
     if attempt["status"] != "graded":
@@ -525,7 +634,7 @@ def quiz_results(attempt_id: int):
 # ---------------------------------------------------------------------------
 
 @app.route("/profile")
-@login_required
+@role_required("learner")
 def profile():
     try:
         skill_names = {
@@ -547,12 +656,29 @@ def profile():
 
 
 # ---------------------------------------------------------------------------
+# Trainer / admin dashboards (admins can open the trainer view too)
+# ---------------------------------------------------------------------------
+
+@app.route("/trainer")
+@role_required("trainer", "admin")
+def trainer_dashboard():
+    return render_template("trainer_dashboard.html")
+
+
+@app.route("/admin")
+@role_required("admin")
+def admin_dashboard():
+    return render_template("admin_dashboard.html")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     db.init_db()
+    seed_demo_accounts()
     logger.info("Antah.ai running on http://%s:%s  (System 1: %s)",
                 settings.FLASK_HOST, settings.FLASK_PORT, settings.S1_URL)
     app.run(host=settings.FLASK_HOST, port=settings.FLASK_PORT, threaded=True, debug=False)

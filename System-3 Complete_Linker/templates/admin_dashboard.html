@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard · Antah.ai{% endblock %}
+{% block content %}
+<div class="center">
+  <div class="section-title" style="margin:.75rem 0 .25rem;">Admin Dashboard</div>
+  <h1 style="font-size:1.35rem; color:var(--brand-deep);">Hi, {{ current_user }}!</h1>
+</div>
+
+<div class="card center mt-4">
+  <p class="muted-empty">User, course and trainer management will appear here.</p>
+  <a class="btn btn-outline btn-sm mt-3" href="{{ url_for('trainer_dashboard') }}">Open trainer view</a>
+</div>
+{% endblock %}
