@@ -1,0 +1,13 @@
+/* Browser-demo additions on top of System-3 style.css + pathways.css (single light theme, like the app). */
+body { background: var(--ground); color: var(--ink); }
+.sticky-aside { position: sticky; top: 90px; }
+.login-pick { display: block; width: 100%; cursor: pointer; font: inherit; color: inherit; transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease; }
+.login-pick:hover { border-color: var(--brand); box-shadow: var(--shadow-2); transform: translateY(-1px); }
+.av-lg { width: 44px; height: 44px; border-radius: 50%; background: var(--brand-deep); color: #fff; font-weight: 800; display: grid; place-items: center; flex: none; font-size: 1.1rem; }
+.dd-btn { display: block; width: 100%; text-align: left; padding: .5rem .75rem; border-radius: 8px; color: var(--ink); font-weight: 400; }
+.dd-btn:hover { background: var(--blue-50); }
+.dd-btn.logout { color: var(--danger); }
+.nav-right .demo-tag { margin-right: .25rem; }
+@media (max-width: 760px) { .hide-sm { display: none !important; } .sticky-aside { position: static; } .auth-inner .grid-2 { grid-template-columns: 1fr; } }
+[hidden] { display: none !important; }
+.login-pick .row { flex-wrap: nowrap; }
