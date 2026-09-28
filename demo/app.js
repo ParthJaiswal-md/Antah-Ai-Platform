@@ -18,7 +18,7 @@
     return { id: c.id, title: c.title, summary: c.summary || '', outcomes: c.outcomes || [], difficulty: c.difficulty,
       duration_minutes: c.duration_minutes, duration_verified: !!c.duration_verified, availability: c.availability || 'available',
       source: c.source || 'local', develops: Object.assign({}, c.develops), prerequisites: (c.prerequisites || []).map(function (p) { return { competency: p.competency, min_level: p.min_level }; }),
-      has_quiz: !!(c.quiz && c.quiz.questions && c.quiz.questions.length), has_lab: !!c.lab, lab_title: (c.lab || {}).title || '' };
+      has_quiz: !!(c.quiz && c.quiz.questions && c.quiz.questions.length), has_lab: !!c.lab, lab_title: (c.lab || {}).title || '', resources: (c.resources || []).map(function (r) { return Object.assign({}, r); }) };
   }
   function now() { return new Date().toISOString().slice(0, 19) + '+00:00'; }
 
@@ -179,6 +179,10 @@
   function banner(text, tag) { return '<div class="demo-banner" role="note"><span class="demo-tag">' + (tag || 'Demo') + '</span><span>' + text + '</span></div>'; }
   function groupBy(arr, k) { var o = [], m = {}; arr.forEach(function (x) { if (!m[x[k]]) { m[x[k]] = []; o.push([x[k], m[x[k]]]); } m[x[k]].push(x); }); return o; }
   function check() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.2 4.2L19 7"/></svg>'; }
+  function resourcesHtml(list, pad) {
+    if (!list || !list.length) return '';
+    return list.map(function (r) { return '<div class="res-link"' + (pad ? ' style="margin:0 .5rem .4rem"' : '') + '><a href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer">' + esc(r.title) + ' ↗</a><span class="xs muted">' + esc(r.provider) + ' · ' + esc(r.kind) + '</span></div>'; }).join('');
+  }
   function lessonHtml(blocks) {
     var out = [], items = [];
     function inline(t) { return esc(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); }
@@ -287,6 +291,10 @@
       '<div><b>' + validated + '</b><span>Validated competencies</span></div><div><b>' + selfr + '</b><span>Self-reported</span></div></div></div>' +
       '<div style="position:relative;z-index:1" class="btn-row">' + (nxt ? '<a class="btn btn-primary" href="/learn/' + nxt.next_action.course_id + '?roadmap=' + nxt.id + '">' + esc(nxt.next_action.verb + ': ' + nxt.next_action.title) + '</a>' : '<a class="btn btn-primary" href="/goals">Choose a goal</a>') + '</div></section>' +
       banner(esc(D._meta.disclaimer)) +
+      '<section class="pw-section"><div class="row between" style="margin-bottom:.8rem"><div class="h2" style="margin:0">Your learning roadmap</div>' +
+      (rms.length ? '<div class="dash-rm-tabs" id="dashTabs">' + rms.map(function (r, i) { return '<button type="button" data-rid="' + r.id + '" class="' + (i ? '' : 'on') + '">' + esc(r.goal_title) + '</button>'; }).join('') + '</div>' : '') + '</div>' +
+      (rms.length ? '<div class="dash-rm"><div class="rm-canvas" id="dashCanvas" aria-label="Your roadmap. Click a course, assessment or lab to open it."></div></div><div class="row between xs muted" style="margin-top:.5rem"><span>Click a course, assessment or lab to open it. Drag to pan, scroll to zoom.</span><a id="dashOpen" class="small" href="/roadmaps/' + rms[0].id + '">Open full roadmap →</a></div>'
+        : '<div class="pw-card" style="text-align:center;padding:2.2rem 1rem"><b>No roadmap yet</b><p class="small muted" style="margin:.3rem 0 1rem">Pick a target role to see your gaps and generate a personalised, prerequisite-aware roadmap.</p><a class="btn btn-primary" href="/goals">Choose a goal</a></div>') + '</section>' +
       '<div class="grid-side pw-section"><div><div class="h2">My roadmaps <span class="count">' + rms.length + '</span></div><div class="grid-2">' +
       rms.map(function (r) {
         return '<article class="pw-card rm-card"><div class="top"><div class="goal-icon">' + (I[r.goal_icon] || I.flag) + '</div><div style="flex:1;min-width:0"><h3><a href="/roadmaps/' + r.id + '" style="color:inherit">' + esc(r.goal_title) + '</a></h3><div class="xs muted">' + esc(r.goal_tagline) + '</div></div>' + ring(r.readiness, 'sm') + '</div>' +
@@ -306,6 +314,25 @@
           return '<div class="comp-item"><div class="head"><span class="name">' + esc(c.name) + '</span><span class="lvl">' + c.level + '</span></div><div class="bar thin" title="' + BASIS[c.basis] + '"><span class="fill ' + c.basis + '" style="width:' + c.level + '%"></span></div></div>';
         }).join('');
       }).join('') + '</div><p class="xs muted" style="margin-top:1rem">Scale 0–100. Only passed assessments and labs create <b>validated</b> evidence; resume suggestions count only after you confirm them.</p></div></aside></div></div>';
+    var dc = document.getElementById('dashCanvas');
+    if (dc) {
+      var cur = rms[0].id;
+      var dm = new PWRoadmap.Roadmap(dc, { compact: true, onSelect: function (n) {
+        var q = '?roadmap=' + cur;
+        if (n.type === 'course') go('/learn/' + n.course_id + q);
+        else if (n.type === 'assessment') go('/learn/' + n.course_id + '/assessment' + q);
+        else if (n.type === 'lab') go('/learn/' + n.course_id + '/lab' + q);
+        else go('/roadmaps/' + cur);
+      } });
+      var showRm = function (gid) {
+        cur = gid; var g = L.roadmaps[gid].graph;
+        document.getElementById('dashOpen').setAttribute('href', '/roadmaps/' + gid);
+        app.querySelectorAll('#dashTabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.rid === gid); });
+        dm.render({ nodes: g.nodes, edges: g.edges, width: g.size.width, height: g.size.height });
+      };
+      app.querySelectorAll('#dashTabs button').forEach(function (b) { b.onclick = function () { showRm(b.dataset.rid); }; });
+      requestAnimationFrame(function () { showRm(cur); });
+    }
   }
 
   function viewCompetencies() {
@@ -432,7 +459,8 @@
           '<div><div class="mini-title">Score breakdown · ' + Math.round(r.score.total * 100) + '/100</div>' + scoreRows(r.score) +
           '<div class="mini-title" style="margin-top:.8rem">Prerequisites</div>' + (r.prerequisites.length ? r.prerequisites.map(function (p) { return '<div class="prq"><span class="' + (p.satisfied ? 'ok' : 'no') + '">' + (p.satisfied ? '✓' : '✗') + '</span>' + esc(p.name) + ' ≥ ' + p.min_level + ' <span class="xs muted">(you: ' + p.current + ')</span></div>'; }).join('') : '<div class="small muted">None</div>') +
           '<div class="row small" style="margin-top:.8rem;gap:1rem"><span><span class="mini-title" style="display:inline">Duration</span> ' + fmtMin(r.duration_minutes) + '</span><span><span class="mini-title" style="display:inline">Availability</span> ' + (r.availability === 'available' ? 'Available' : '<b style="color:var(--unav)">Unavailable</b>') + '</span></div>' +
-          '<div class="xs muted" style="margin-top:.3rem">Source: ' + (r.source === 'local' ? 'Curated local catalogue (demo content)' : 'iGOT connector: MOCK, not a live listing') + '</div></div></div></article>';
+          '<div class="xs muted" style="margin-top:.3rem">Source: ' + (r.source === 'local' ? 'Curated local catalogue (demo content)' : 'iGOT connector: MOCK, not a live listing') + '</div>' +
+          (r.resources && r.resources.length ? '<div class="xs" style="margin-top:.4rem">Further study: ' + r.resources.map(function (x) { return '<a href="' + esc(x.url) + '" target="_blank" rel="noopener noreferrer">' + esc(x.title) + ' ↗</a>'; }).join(' · ') + '</div>' : '') + '</div></div></article>';
       }).join('') : '<div class="pw-card"><b>No courses needed.</b> <span class="muted">Your current evidence meets every target for this goal.</span></div>') +
       (a.skipped.length ? '<div class="pw-card flat" style="margin-top:1rem"><div class="h2" style="font-size:1rem">Why not these courses?</div>' + a.skipped.map(function (s) {
         return '<div class="skip-item">' + chip(KIND[s.kind], s.kind === 'redundant' ? '' : 'ok') + '<div><b>' + esc(s.title) + '</b><div class="muted">' + esc(s.reason) + '</div></div></div>';
@@ -521,7 +549,7 @@
     var back = rid ? '<a href="/roadmaps/' + rid + '">← Back to roadmap</a>' : '<a href="/dashboard">← Dashboard</a>';
     var head = '<div class="pw-head" style="padding-bottom:0"><div><div class="eyebrow">' + back + '</div><h1>' + esc(c.title) + '</h1><div class="row" style="margin-top:.5rem">' + chip(titleCase(c.difficulty)) + chip(c.duration_verified ? fmtMin(c.duration_minutes) : 'Duration not verified') +
       chip(c.source === 'local' ? 'Curated · demonstration content' : 'iGOT connector · MOCK', c.source === 'local' ? 'brand' : 'bad') + (pr.status === 'completed' ? chip('Completed', 'ok') : pr.status === 'in_progress' ? chip('In progress · ' + pr.percent + '%', 'brand') : '') + '</div></div></div>';
-    if (c.availability !== 'available') { app.innerHTML = '<div class="container-wide">' + head + '<div class="pw-card" style="margin-top:1.5rem"><h3>Content unavailable</h3><p class="muted" style="margin-top:.4rem">This listing comes from the <b>mock iGOT connector</b>. There is no live iGOT connection in this prototype, so no content, duration or availability can be confirmed. It stays on roadmaps so the gap it would close is visible.</p></div></div>'; return; }
+    if (c.availability !== 'available') { app.innerHTML = '<div class="container-wide">' + head + '<div class="pw-card" style="margin-top:1.5rem"><h3>Content unavailable</h3><p class="muted" style="margin-top:.4rem">This listing comes from the <b>mock iGOT connector</b>. There is no live iGOT connection in this prototype, so no content, duration or availability can be confirmed. It stays on roadmaps so the gap it would close is visible.</p>' + (c.resources.length ? '<div class="mini-title" style="margin-top:1rem">Real external alternatives (free, not tracked)</div>' + resourcesHtml(c.resources) : '') + '</div></div>'; return; }
     var lesson = c.lessons.filter(function (l) { return l.id === q.lesson; })[0] || c.lessons.filter(function (l) { return done.indexOf(l.id) < 0; })[0] || c.lessons[0];
     var locked = c.locked && pr.status === 'not_started';
     var lessonLink = function (lid) { return '/learn/' + cid + '?lesson=' + lid + (rid ? '&roadmap=' + rid : ''); };
@@ -529,7 +557,8 @@
       c.lessons.map(function (l, i) { return '<a class="step ' + (l.id === lesson.id ? 'current' : '') + '" href="' + lessonLink(l.id) + '"><span class="step-ico ' + (done.indexOf(l.id) >= 0 ? 'done' : '') + '">' + (done.indexOf(l.id) >= 0 ? check() : '<span class="xs">' + (i + 1) + '</span>') + '</span><span>' + esc(l.title) + '<br><span class="xs muted">' + l.minutes + ' min</span></span></a>'; }).join('') +
       '<hr class="divider" style="margin:.6rem 0"><a class="step ' + (locked ? 'disabled' : '') + '" href="/learn/' + cid + '/assessment' + rq + '"><span class="step-ico ' + (pr.quiz_passed ? 'done' : '') + '">' + (pr.quiz_passed ? check() : '?') + '</span><span>Assessment<br><span class="xs muted">' + (pr.best_score != null ? 'Best ' + pr.best_score + '% · ' : '') + 'pass 70%</span></span></a>' +
       (c.lab ? '<a class="step ' + (pr.quiz_passed ? '' : 'disabled') + '" href="/learn/' + cid + '/lab' + rq + '"><span class="step-ico ' + (pr.lab_passed ? 'done' : '') + '">' + (pr.lab_passed ? check() : 'L') + '</span><span>Practical lab<br><span class="xs muted">' + (pr.quiz_passed ? esc(c.lab.title) : 'Unlocks after assessment') + '</span></span></a>' : '') +
-      '<hr class="divider" style="margin:.6rem 0"><div class="mini-title" style="padding:0 .5rem">Develops</div>' + c.develops_named.map(function (d) { return '<div class="dev-row" style="padding:0 .5rem"><span class="small">' + esc(d.name) + '</span><span class="xs muted">' + d.current + ' → up to ' + d.reaches + '</span>' + bar(d.current, null, d.reaches, d.basis, true) + '</div>'; }).join('') + '</aside>' +
+      '<hr class="divider" style="margin:.6rem 0"><div class="mini-title" style="padding:0 .5rem">Develops</div>' + c.develops_named.map(function (d) { return '<div class="dev-row" style="padding:0 .5rem"><span class="small">' + esc(d.name) + '</span><span class="xs muted">' + d.current + ' → up to ' + d.reaches + '</span>' + bar(d.current, null, d.reaches, d.basis, true) + '</div>'; }).join('') +
+      (c.resources.length ? '<hr class="divider" style="margin:.6rem 0"><div class="mini-title" style="padding:0 .5rem">Further study · external, free</div>' + resourcesHtml(c.resources, true) + '<div class="xs muted" style="padding:0 .5rem">Not tracked; only the AntahAI assessment changes your level.</div>' : '') + '</aside>' +
       '<section>' + (locked ? '<div class="form-error"><b>Locked.</b> You can preview the lessons, but you need ' + c.prereq_status.filter(function (p) { return !p.satisfied; }).map(function (p) { return '<b>' + esc(p.name) + ' ≥ ' + p.min_level + '</b> (you: ' + p.current + ')'; }).join(', ') + ' before starting or taking the assessment.</div>' : '') +
       '<article class="pw-card lesson" style="padding:1.75rem 2rem"><div class="eyebrow">Lesson ' + (c.lessons.indexOf(lesson) + 1) + ' of ' + c.lessons.length + ' · ' + lesson.minutes + ' min</div><h2>' + esc(lesson.title) + '</h2>' + lessonHtml(lesson.body) +
       '<hr class="divider"><div class="row between"><span class="xs muted">Marking a lesson as read updates your progress only. Competency levels change only when you pass the assessment.</span>' + (locked ? '' : '<button class="btn btn-primary" id="markBtn">' + (done.indexOf(lesson.id) >= 0 ? 'Next lesson →' : 'Mark as read &amp; continue →') + '</button>') + '</div></article>' +

@@ -1,0 +1,6 @@
+# Runtime dependencies for the AntahAI web app (Learning Pathways + Round-1 pages).
+# The Round-1 video-quiz generator (System 2: Whisper, ffmpeg, Groq) is optional and not included here.
+Flask>=3.0,<4
+python-dotenv>=1.0
+pypdf>=3.17
+gunicorn>=22

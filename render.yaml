@@ -1,0 +1,17 @@
+# Render Blueprint: https://render.com/deploy?repo=https://github.com/ParthJaiswal-md/Antah-Ai-Platform
+services:
+  - type: web
+    name: antahai
+    runtime: docker
+    plan: starter            # a persistent disk needs a paid instance; use "free" to try without persistence
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: ANTAHAI_SECRET
+        generateValue: true
+      - key: ANTAHAI_DB
+        value: /data/antahai.db
+    disk:
+      name: antahai-data
+      mountPath: /data
+      sizeGB: 1

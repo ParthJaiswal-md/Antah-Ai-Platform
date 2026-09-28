@@ -440,3 +440,11 @@ body.roadmap-page { overflow: hidden; }
   .rm-bar .ring.sm { width: 40px; height: 40px; }
   .drawer { top: auto; }
 }
+.res-link { display: flex; flex-direction: column; gap: .05rem; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: 10px; margin-bottom: .4rem; background: #fff; }
+.res-link a { font-weight: 650; font-size: .88rem; }
+.dash-rm { position: relative; height: 420px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #F7F9FC; }
+.dash-rm .rm-canvas { position: absolute; inset: 0; }
+.dash-rm-tabs { display: flex; gap: .4rem; flex-wrap: wrap; }
+.dash-rm-tabs button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: .3rem .8rem; font: inherit; font-size: .82rem; font-weight: 650; color: var(--ink-2); cursor: pointer; }
+.dash-rm-tabs button.on { background: var(--brand-deep); border-color: var(--brand-deep); color: #fff; }
+@media (max-width: 680px) { .dash-rm { height: 340px; } }

@@ -32,7 +32,7 @@ import db as core_db  # System-3 connection helper (honours ANTAHAI_DB)
 
 from . import catalogue as cat
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SOURCES = ("self_reported", "resume_inferred", "assessment")
 
 
@@ -237,6 +237,10 @@ def migrate() -> None:
     core_db.init_db()  # Round-1 tables (users etc.) must exist for FKs
     with closing(connect()) as conn:
         conn.executescript(SCHEMA)
+        # v2: external learning resources per course (additive migration).
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(pw_courses)").fetchall()}
+        if "resources" not in cols:
+            conn.execute("ALTER TABLE pw_courses ADD COLUMN resources TEXT NOT NULL DEFAULT '[]'")
         row = conn.execute("SELECT MAX(version) FROM pw_schema_version").fetchone()
         if not row or row[0] is None or row[0] < SCHEMA_VERSION:
             conn.execute("INSERT OR REPLACE INTO pw_schema_version VALUES (?, ?)",
@@ -294,6 +298,8 @@ def _upsert_course(conn: sqlite3.Connection, c: dict) -> None:
          1 if c.get("duration_verified") else 0, c.get("source", "local"),
          c.get("availability", "available"), json.dumps(c.get("outcomes", []))),
     )
+    conn.execute("UPDATE pw_courses SET resources=? WHERE id=?",
+                 (json.dumps(c.get("resources", [])), c["id"]))
     conn.execute("DELETE FROM pw_course_competencies WHERE course_id=?", (c["id"],))
     conn.execute("DELETE FROM pw_course_prerequisites WHERE course_id=?", (c["id"],))
     for comp, lvl in (c.get("develops") or {}).items():
@@ -414,6 +420,7 @@ def engine_courses() -> list[dict]:
             "duration_verified": bool(r["duration_verified"]),
             "availability": r["availability"], "source": r["source"],
             "develops": {}, "prerequisites": [], "has_quiz": False, "has_lab": False, "lab_title": "",
+            "resources": json.loads(r.get("resources") or "[]"),
         }
     for r in _rows("SELECT * FROM pw_course_competencies ORDER BY competency_id"):
         courses[r["course_id"]]["develops"][r["competency_id"]] = r["level"]

@@ -32,6 +32,19 @@
   <span>{{ pw_disclaimer }}</span>
 </div>
 
+<section class="pw-section">
+  <div class="row between" style="margin-bottom:.8rem">
+    <div class="h2" style="margin:0">Your learning roadmap</div>
+    {% if d.roadmaps %}<div class="dash-rm-tabs" id="dashTabs">{% for r in d.roadmaps %}<button type="button" data-rid="{{ r.id }}" class="{{ 'on' if loop.first }}">{{ r.goal_title }}</button>{% endfor %}</div>{% endif %}
+  </div>
+  {% if d.roadmaps %}
+  <div class="dash-rm"><div class="rm-canvas" id="dashCanvas" aria-label="Your roadmap. Click a course, assessment or lab to open it."></div></div>
+  <div class="row between xs muted" style="margin-top:.5rem"><span>Click a course, assessment or lab to open it. Drag to pan, scroll to zoom.</span><a id="dashOpen" class="small" href="{{ url_for('pathways.roadmap_page', roadmap_id=d.roadmaps[0].id) }}">Open full roadmap →</a></div>
+  {% else %}
+  <div class="pw-card" style="text-align:center;padding:2.2rem 1rem"><b>No roadmap yet</b><p class="small muted" style="margin:.3rem 0 1rem">Pick a target role to see your gaps and generate a personalised, prerequisite-aware roadmap.</p><a class="btn btn-primary" href="{{ url_for('pathways.goals_page') }}">Choose a goal</a></div>
+  {% endif %}
+</section>
+
 <div class="grid-side pw-section">
   <div>
     <div class="h2">My roadmaps <span class="count">{{ d.roadmaps|length }}</span></div>
@@ -120,6 +133,29 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/roadmap.js') }}"></script>
+<script>
+(function () {
+  var canvas = document.getElementById('dashCanvas'); if (!canvas) return;
+  var current = null;
+  var map = new PWRoadmap.Roadmap(canvas, { compact: true, onSelect: function (n) {
+    var rid = current, q = '?roadmap=' + rid;
+    if (n.type === 'course') window.location.href = '/learn/' + encodeURIComponent(n.course_id) + q;
+    else if (n.type === 'assessment') window.location.href = '/learn/' + encodeURIComponent(n.course_id) + '/assessment' + q;
+    else if (n.type === 'lab') window.location.href = '/learn/' + encodeURIComponent(n.course_id) + '/lab' + q;
+    else window.location.href = '/roadmaps/' + rid;
+  } });
+  function show(rid) {
+    current = rid;
+    document.getElementById('dashOpen').href = '/roadmaps/' + rid;
+    document.querySelectorAll('#dashTabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.rid == rid); });
+    PW.api('GET', '/api/pathways/roadmaps/' + rid).then(function (d) { map.render(d.roadmap); })
+      .catch(function (e) { canvas.innerHTML = '<div class="rm-state"><div class="box"><h3>Could not load the roadmap</h3><p class="small muted">' + PW.esc(e.message) + '</p></div></div>'; });
+  }
+  document.querySelectorAll('#dashTabs button').forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.rid); }); });
+  show(document.querySelector('#dashTabs button').dataset.rid);
+})();
+</script>
 <script>
   document.querySelectorAll('[data-icon]').forEach(function (el) { el.innerHTML = PW.icons[el.getAttribute('data-icon')] || PW.icons.flag; });
 </script>

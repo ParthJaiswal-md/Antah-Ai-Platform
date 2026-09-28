@@ -429,6 +429,9 @@
         return '<div class="prq"><span class="' + (p.satisfied ? 'ok' : 'no') + '">' + (p.satisfied ? I.check : I.lock).replace('<svg', '<svg class="ico"') + '</span>' +
           esc(p.name) + ' ≥ ' + p.min_level + ' <span class="muted xs">(you: ' + p.current + ', ' + esc(BASIS_LABEL[p.basis] || p.basis) + ')</span></div>';
       }).join('') : '<div class="small muted">None</div>') + '</section>');
+      if ((d.resources || []).length) body.push('<section><div class="mini-title">Further study · external, free</div>' + d.resources.map(function (r) {
+        return '<div class="res-link"><a href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer">' + esc(r.title) + ' ↗</a><span class="xs muted">' + esc(r.provider) + ' · ' + esc(r.kind) + '</span></div>';
+      }).join('') + '<div class="xs muted" style="margin-top:.3rem">Opens the provider’s site. Progress there is not tracked; only the AntahAI assessment updates your competency level.</div></section>');
       if ((d.outcomes || []).length) body.push('<section><div class="mini-title">Learning outcomes</div><ul class="outcomes">' + d.outcomes.map(function (o) { return '<li>' + esc(o) + '</li>'; }).join('') + '</ul></section>');
       var pr = d.progress || {};
       body.push('<section class="row between small"><span><span class="mini-title" style="display:inline">Duration</span> ' + esc(fmtMin(d.duration_minutes)) + '</span>' +

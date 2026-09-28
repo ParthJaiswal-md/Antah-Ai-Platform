@@ -244,7 +244,7 @@
         duration_minutes: c.duration_verified ? c.duration_minutes : null, availability: c.availability || 'available',
         source: c.source || 'local', status: status, role: (plan.prereq_added[cid] && !changes.length) ? 'prerequisite' : 'gap',
         score: score, develops: develops, prerequisites: pre, reasons: reasons,
-        progress: progress[cid] || { status: 'not_started', percent: 0 } });
+        progress: progress[cid] || { status: 'not_started', percent: 0 }, resources: c.resources || [] });
     });
     var order = { ready: 0, locked: 1, unavailable: 2 };
     recs = sortBy(recs, function (r) { return [order[r.status], -r.score.total, r.course_id]; });
@@ -298,7 +298,7 @@
           develops: keys(c.develops).map(function (k) { return { competency: k, name: compName(comps, k), reaches: c.develops[k], current: levelOf(lv, k), target: gr[k] ? gr[k].target : null }; }),
           prerequisites: prerequisiteStatus(c, lv, comps),
           reasons: info ? info.reasons : ['Completed earlier - kept as learning history.'],
-          score: info ? info.score : null, rank: info ? info.rank : null,
+          score: info ? info.score : null, rank: info ? info.rank : null, resources: c.resources || [],
           progress: { status: ps.status || 'not_started', percent: ps.percent | 0 } } });
       var end = 'course:' + cid;
       if (c.has_quiz && available(c)) {

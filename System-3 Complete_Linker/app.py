@@ -152,6 +152,22 @@ def _json_body() -> dict | None:
 # Landing / auth
 # ---------------------------------------------------------------------------
 
+@app.route("/favicon.ico")
+def favicon():
+    return app.send_static_file("favicon.svg")
+
+
+@app.route("/healthz")
+def healthz():
+    """Liveness/readiness probe for the hosting platform (checks the DB answers)."""
+    try:
+        with db.connect() as conn:
+            conn.execute("SELECT 1").fetchone()
+    except Exception as err:  # noqa: BLE001
+        return jsonify({"ok": False, "error": str(err)}), 503
+    return jsonify({"ok": True})
+
+
 @app.route("/")
 def landing():
     if "user_id" in session:

@@ -107,6 +107,9 @@ def validate(raw: dict) -> None:
                 errors.append(f"{cid}: prerequisite on unknown competency {pre.get('competency')}")
             if not 0 < int(pre.get("min_level", 0)) <= 100:
                 errors.append(f"{cid}: prerequisite level out of range")
+        for r in c.get("resources", []):
+            if not str(r.get("url", "")).startswith("https://") or not r.get("title"):
+                errors.append(f"{cid}: external resource needs a title and an https:// url")
         lessons = {l["id"] for l in c.get("lessons", [])}
         quiz = c.get("quiz")
         if c.get("availability", "available") == "available" and c in raw.get("courses", []):
@@ -162,4 +165,5 @@ def engine_course(c: dict) -> dict:
         "has_quiz": bool((c.get("quiz") or {}).get("questions")),
         "has_lab": bool(c.get("lab")),
         "lab_title": (c.get("lab") or {}).get("title", ""),
+        "resources": [dict(r) for r in c.get("resources", [])],
     }

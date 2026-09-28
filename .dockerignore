@@ -1,0 +1,8 @@
+**/__pycache__
+**/.venv
+**/*.pyc
+.git
+demo
+System-2 MCQ_Generator
+System-3 Complete_Linker/uploads
+System-3 Complete_Linker/.antahai_secret

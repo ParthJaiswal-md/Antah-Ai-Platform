@@ -189,5 +189,30 @@ class FlowTests(unittest.TestCase):
         self.assertEqual(r.status_code, 422)
 
 
+    def test_healthz_and_dashboard_embed_and_resources(self):
+        r = self.c.get("/healthz")
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.get_json()["ok"])
+        self.login("demo_asha")
+        rid = self.api("POST", "/api/pathways/roadmaps", {"goal_id": "dataviz_specialist", "confirmed": True}).get_json()["id"]
+        dash = self.c.get("/dashboard").get_data(as_text=True)
+        self.assertIn('id="dashCanvas"', dash)
+        self.assertIn(f'data-rid="{rid}"', dash)
+        rm = self.api("GET", f"/api/pathways/roadmaps/{rid}").get_json()["roadmap"]
+        viz = next(n for n in rm["nodes"] if n["id"] == "course:VIZ201")
+        self.assertTrue(viz["data"]["resources"][0]["url"].startswith("https://"))
+        mock = next(n for n in rm["nodes"] if n["id"] == "course:IGOT-MOCK-DISSEM")
+        self.assertEqual(mock["state"], "unavailable")
+        self.assertTrue(any("unsdglearn" in r["url"] for r in mock["data"]["resources"]))
+        page = self.c.get("/learn/IGOT-MOCK-DISSEM").get_data(as_text=True)
+        self.assertIn("Real external alternatives", page)
+        self.assertIn("Further study", self.c.get("/learn/VIZ201").get_data(as_text=True))
+
+    def test_migration_is_idempotent(self):
+        from pathways import store
+        store.migrate(); store.migrate()
+        self.assertEqual(store.engine_courses()[0]["resources"] is not None, True)
+
+
 if __name__ == "__main__":
     unittest.main()

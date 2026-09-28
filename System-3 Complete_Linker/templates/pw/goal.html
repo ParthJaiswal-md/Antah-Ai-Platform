@@ -90,6 +90,7 @@
               <span><span class="mini-title" style="display:inline">Availability</span> {% if r.availability == 'available' %}Available{% else %}<b style="color:var(--unav)">Unavailable</b>{% endif %}</span>
             </div>
             <div class="xs muted" style="margin-top:.3rem">Source: {{ 'Curated local catalogue (demo content)' if r.source == 'local' else 'iGOT connector: MOCK, not a live listing' }}</div>
+            {% if r.resources %}<div class="xs" style="margin-top:.4rem">Further study: {% for x in r.resources %}<a href="{{ x.url }}" target="_blank" rel="noopener noreferrer">{{ x.title }} ↗</a>{{ ' · ' if not loop.last }}{% endfor %}</div>{% endif %}
           </div>
         </div>
       </article>

@@ -534,6 +534,7 @@ def build_recommendations(goal: dict, courses: list[dict], levels: dict,
             "prerequisites": prereqs,
             "reasons": reasons,
             "progress": progress.get(cid, {"status": "not_started", "percent": 0}),
+            "resources": course.get("resources", []),
         })
 
     order = {"ready": 0, "locked": 1, "unavailable": 2}
@@ -654,6 +655,7 @@ def build_roadmap(goal: dict, courses: list[dict], levels: dict, progress: dict,
                 "reasons": info["reasons"] if info else ["Completed earlier - kept as learning history."],
                 "score": info["score"] if info else None,
                 "rank": info["rank"] if info else None,
+                "resources": course.get("resources", []),
                 "progress": {"status": pstat.get("status", "not_started"),
                              "percent": int(pstat.get("percent") or 0)},
             },

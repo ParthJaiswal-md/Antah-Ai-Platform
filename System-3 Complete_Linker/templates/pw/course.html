@@ -22,6 +22,8 @@
   <div class="pw-card" style="margin-top:1.5rem">
     <h3>Content unavailable</h3>
     <p class="muted" style="margin-top:.4rem">This listing comes from the <b>mock iGOT connector</b>. There is no live iGOT connection in this prototype, so no content, duration or availability can be confirmed. It stays on roadmaps so the gap it would close is visible.</p>
+    {% if c.resources %}<div class="mini-title" style="margin-top:1rem">Real external alternatives (free, not tracked)</div>
+    {% for r in c.resources %}<div class="res-link"><a href="{{ r.url }}" target="_blank" rel="noopener noreferrer">{{ r.title }} ↗</a><span class="xs muted">{{ r.provider }} · {{ r.kind }}</span></div>{% endfor %}{% endif %}
   </div>
 {% else %}
 <div class="player">
@@ -52,6 +54,12 @@
       <div class="dev-row" style="padding:0 .5rem"><span class="small">{{ d.name }}</span><span class="xs muted">{{ d.current }} → up to {{ d.reaches }}</span>
         <div class="bar thin"><span class="fill {{ d.basis }}" style="width:{{ d.current }}%"></span>{% if d.reaches > d.current %}<span class="gapfill" style="left:{{ d.current }}%;width:{{ d.reaches - d.current }}%"></span>{% endif %}</div></div>
     {% endfor %}
+{% if c.resources %}
+    <hr class="divider" style="margin:.6rem 0">
+    <div class="mini-title" style="padding:0 .5rem">Further study · external, free</div>
+    {% for r in c.resources %}<div class="res-link" style="margin:0 .5rem .4rem"><a href="{{ r.url }}" target="_blank" rel="noopener noreferrer">{{ r.title }} ↗</a><span class="xs muted">{{ r.provider }} · {{ r.kind }}</span></div>{% endfor %}
+    <div class="xs muted" style="padding:0 .5rem">Not tracked; only the AntahAI assessment changes your level.</div>
+    {% endif %}
   </aside>
 
   <section>
