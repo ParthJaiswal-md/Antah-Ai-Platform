@@ -3,26 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{% block title %}Antah.ai{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pathways.css') }}">
+  {% block head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <nav class="nav">
-    <a class="nav-brand" href="{{ url_for('recommendation') }}">Antah.ai</a>
+    <div class="nav-left">
+      <a class="nav-brand" href="{{ url_for('pathways.dashboard') }}">Antah.ai</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Menu" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      {% set ep = request.endpoint or '' %}
+      <div class="nav-links" id="navLinks">
+        <a href="{{ url_for('pathways.dashboard') }}" class="{{ 'active' if ep == 'pathways.dashboard' }}">Dashboard</a>
+        <a href="{{ url_for('pathways.competencies_page') }}" class="{{ 'active' if ep == 'pathways.competencies_page' }}">My competencies</a>
+        <a href="{{ url_for('pathways.goals_page') }}" class="{{ 'active' if ep in ('pathways.goals_page', 'pathways.goal_page') }}">Goals &amp; roadmaps</a>
+        <a href="{{ url_for('pathways.compare_page') }}" class="{{ 'active' if ep == 'pathways.compare_page' }}">Compare demo learners</a>
+        <a href="{{ url_for('recommendation') }}" class="{{ 'active' if ep in ('recommendation', 'submission_results') }}" title="Round-1 role-based recommender over the iGOT catalogue dataset">Role recommender (Round 1)</a>
+      </div>
+    </div>
     <div class="nav-right">
       {% block nav_back %}{% endblock %}
       <div class="avatar-wrap">
         <div class="avatar" id="avatarBtn" title="{{ current_user }}" tabindex="0">{{ current_user[0]|upper }}</div>
         <div class="dropdown" id="dropdown">
           <div class="hi">Hi, {{ current_user }}!</div>
-          <a href="{{ url_for('profile') }}">Profile</a>
+          <a href="{{ url_for('pathways.dashboard') }}">Dashboard</a>
+          <a href="{{ url_for('profile') }}">Round-1 history</a>
           <a class="logout" href="{{ url_for('logout') }}">Logout</a>
         </div>
       </div>
     </div>
   </nav>
 
-  <main class="container">
+  <main class="{% block container_class %}container{% endblock %}">
     {% block content %}{% endblock %}
   </main>
 
@@ -41,6 +58,14 @@
       });
       document.addEventListener('click', close);
 
+      var nt = document.getElementById('navToggle');
+      var nl = document.getElementById('navLinks');
+      nt.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = nl.classList.toggle('open');
+        nt.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+
       // Back button: rendered only on the profile page (which overrides the
       // header's back-button block). Go to the previous page; if there is none
       // in this tab, fall back to the intake rather than leaving the app.
@@ -51,6 +76,7 @@
       });
     })();
   </script>
+  <script src="{{ url_for('static', filename='js/pw-common.js') }}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

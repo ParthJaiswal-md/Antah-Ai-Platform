@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Goals · Antah.ai{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% block content %}
+<div class="pw-head">
+  <div>
+    <div class="eyebrow">Step 2 · Choose a target</div>
+    <h1>Where do you want to grow?</h1>
+    <p>Each goal lists the competencies it requires and the level expected. Readiness is calculated from your current evidence.</p>
+  </div>
+  <a class="btn btn-soft btn-sm" href="{{ url_for('pathways.competencies_page') }}">Review my competencies first</a>
+</div>
+
+<div class="grid-2">
+  {% for c in cards %}
+  {% set g = c.goal %}
+  <article class="pw-card goal-card">
+    <div class="row" style="gap:.9rem;align-items:flex-start">
+      <div class="goal-icon" data-icon="{{ g.icon }}"></div>
+      <div style="flex:1;min-width:0">
+        <h3>{{ g.title }}</h3>
+        <div class="small muted">{{ g.tagline }}</div>
+      </div>
+      <div class="ring sm" style="--p:{{ c.readiness }}" title="Your readiness"><b>{{ c.readiness }}%</b></div>
+    </div>
+    <div>
+      <div class="mini-title">Required competencies</div>
+      {% for gp in c.gaps %}
+      <div class="dev-row" style="margin-bottom:.7rem">
+        <span class="small">{{ gp.name }}{% if gp.weight == 3 %} <span class="chip brand" style="font-size:.65rem">core</span>{% endif %}</span>
+        <span class="xs {{ 'muted' if not gp.met }}" {% if gp.met %}style="color:var(--done);font-weight:700"{% endif %}>{{ gp.current }} / {{ gp.target }}</span>
+        <div class="bar thin"><span class="fill {{ gp.basis }}" style="width:{{ gp.current }}%"></span>{% if not gp.met %}<span class="gapfill" style="left:{{ gp.current }}%;width:{{ gp.gap }}%"></span>{% endif %}<span class="target" style="left:{{ gp.target }}%"></span></div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="foot">
+      {% if c.saved %}
+        <span class="chip ok">Roadmap saved · {{ c.saved.progress }}% done</span>
+        <div class="btn-row">
+          <a class="btn btn-soft btn-sm" href="{{ url_for('pathways.goal_page', goal_id=g.id) }}">Gaps</a>
+          <a class="btn btn-brand btn-sm" href="{{ url_for('pathways.roadmap_page', roadmap_id=c.saved.id) }}">Open roadmap</a>
+        </div>
+      {% else %}
+        <span class="xs muted">{{ c.gaps|rejectattr('met')|list|length }} gap{{ 's' if c.gaps|rejectattr('met')|list|length != 1 }} to close</span>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('pathways.goal_page', goal_id=g.id) }}">View gaps &amp; recommendations</a>
+      {% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</div>
+<div class="demo-banner"><span class="demo-tag">Prototype</span><span>Goal requirements are illustrative prototype mappings aligned to the MoSPI/DIID problem statement. They are not official job-role competency frameworks and need validation.</span></div>
+{% endblock %}
+{% block scripts %}
+<script>document.querySelectorAll('[data-icon]').forEach(function (el) { el.innerHTML = PW.icons[el.getAttribute('data-icon')] || PW.icons.flag; });</script>
+{% endblock %}

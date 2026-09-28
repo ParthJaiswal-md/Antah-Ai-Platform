@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Antah.ai — Login</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pathways.css') }}">
 </head>
 <body>
   <div class="auth-wrap">
@@ -26,6 +27,12 @@
             <a href="#" id="wantRegister">Want to register instead?</a>
           </div>
         </form>
+      </div>
+      <div class="demo-creds">
+        <div class="demo-creds-title">Demo learners <span class="demo-tag">Demonstration data</span></div>
+        <div class="demo-creds-row"><code>demo_asha</code> strong Python, weaker statistics</div>
+        <div class="demo-creds-row"><code>demo_ravi</code> new to Python and statistics</div>
+        <div class="demo-creds-row subtle">Password for both: <code>demo1234</code></div>
       </div>
     </div>
   </div>
@@ -56,7 +63,7 @@
           return r.json().then(function (d) { return { ok: r.ok, data: d }; });
         }).then(function (res) {
           if (res.ok) {
-            window.location.href = res.data.redirect || '/recommendation';
+            window.location.href = res.data.redirect || '/dashboard';
           } else {
             failed = true;
             pwd.value = '';

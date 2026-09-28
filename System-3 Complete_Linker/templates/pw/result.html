@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}Assessment result · {{ c.title }} · Antah.ai{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% set BASIS = {'assessment': 'Validated', 'self_reported': 'Self-reported', 'none': 'No evidence'} %}
+{% block content %}
+<div class="pw-head" style="padding-bottom:1rem">
+  <div>
+    <div class="eyebrow"><a href="{{ url_for('pathways.course_page', course_id=c.id, roadmap=rid) }}">← {{ c.title }}</a></div>
+    <h1>Assessment result</h1>
+    {% set ids = attempts|map(attribute='id')|list %}
+    <p>Attempt {{ ids.index(attempt.id) + 1 }} of {{ ids|length }} · {{ attempt.created_at[:16]|replace('T', ' ') }} UTC</p>
+  </div>
+</div>
+
+<section class="pw-card result-hero {{ 'pass' if r.passed else 'fail' }}">
+  <div class="ring lg" style="--p:{{ r.percent }};--c:{{ 'var(--done)' if r.passed else 'var(--rec)' }}"><b>{{ r.percent }}%</b></div>
+  <div style="flex:1;min-width:220px">
+    <h3 style="font-size:1.25rem">{{ 'Passed: competency evidence recorded' if r.passed else 'Not yet: targeted revision below' }}</h3>
+    <p class="muted" style="margin-top:.3rem">{{ r.correct }} of {{ r.total }} correct · pass mark {{ (r.pass_threshold * 100)|round|int }}%.
+      {% if r.passed and c.lab and not c.progress.lab_passed %}Complete the practical lab to finish this course.{% elif r.passed %}Course completed.{% else %}Your competency levels were <b>not</b> changed.{% endif %}</p>
+  </div>
+  <div class="btn-row">
+    {% if not r.passed %}
+      <a class="btn btn-primary" href="{{ url_for('pathways.assessment_page', course_id=c.id, roadmap=rid) }}">Retry assessment</a>
+    {% elif c.lab and not c.progress.lab_passed %}
+      <a class="btn btn-primary" href="{{ url_for('pathways.lab_page', course_id=c.id, roadmap=rid) }}">Open the lab</a>
+    {% endif %}
+    {% if rid %}<a class="btn btn-brand" href="{{ url_for('pathways.roadmap_page', roadmap_id=rid) }}">Back to roadmap</a>
+    {% else %}<a class="btn btn-brand" href="{{ url_for('pathways.dashboard') }}">Dashboard</a>{% endif %}
+  </div>
+</section>
+
+<div class="grid-2 pw-section">
+  <section class="pw-card">
+    <div class="h2" style="font-size:1rem">Per-competency score</div>
+    {% for comp, s in r.per_competency.items() %}
+      <div class="dev-row"><span>{{ comps[comp].name }}</span><span class="xs"><b>{{ s.correct }}/{{ s.total }}</b> · {{ (s.accuracy * 100)|round|int }}%</span>
+        <div class="bar thin"><span class="fill {{ 'assessment' if s.accuracy >= 0.8 else 'self_reported' }}" style="width:{{ (s.accuracy * 100)|round|int }}%"></span><span class="target" style="left:80%"></span></div></div>
+    {% endfor %}
+    <p class="xs muted" style="margin-top:.5rem">Rule: after a pass, each competency is credited at <i>course level × min(1, accuracy ÷ 80%)</i>. The marker shows 80%.</p>
+  </section>
+
+  <section class="pw-card">
+    <div class="h2" style="font-size:1rem">What changed in your profile</div>
+    {% if fresh.changes %}
+      {% for ch in fresh.changes %}
+      <div class="change"><b style="flex:1;font-weight:600">{{ ch.name }}</b><span class="basis {{ ch.before_basis }}">{{ BASIS[ch.before_basis] }}</span><b>{{ ch.before }}</b><span class="arrow">→</span><b style="color:var(--done)">{{ ch.after }}</b><span class="basis {{ ch.after_basis }}">{{ BASIS[ch.after_basis] }}</span></div>
+      {% endfor %}
+    {% elif evidence %}
+      {% for e in evidence %}<div class="change"><b style="flex:1;font-weight:600">{{ comps[e.competency_id].name }}</b><span class="basis assessment">Evidence</span><b>{{ e.level }}</b></div>{% endfor %}
+    {% else %}
+      <p class="small muted">No change. {{ 'A failed attempt never changes competency levels.' if not r.passed else 'Your existing validated levels were already at or above this result.' }}</p>
+    {% endif %}
+    {% for e in evidence %}<p class="xs muted" style="margin-top:.4rem">{{ e.note }}</p>{% endfor %}
+    {% if fresh.roadmaps %}
+      <div class="mini-title" style="margin-top:1rem">Roadmaps recalculated</div>
+      {% for rm in fresh.roadmaps %}
+        <div class="change"><a href="{{ url_for('pathways.roadmap_page', roadmap_id=rm.id) }}" style="flex:1">{{ rm.goal_title }}</a>
+          <span class="xs muted">readiness</span><b>{{ rm.readiness_before if rm.readiness_before is not none else '–' }}%</b><span class="arrow">→</span><b style="color:var(--brand-deep)">{{ rm.readiness_after }}%</b></div>
+      {% endfor %}
+    {% elif roadmaps %}
+      <div class="mini-title" style="margin-top:1rem">Your roadmaps</div>
+      {% for rm in roadmaps %}<div class="change"><a href="{{ url_for('pathways.roadmap_page', roadmap_id=rm.id) }}" style="flex:1">{{ rm.goal_title }}</a><b>{{ rm.readiness }}%</b></div>{% endfor %}
+    {% endif %}
+  </section>
+</div>
+
+{% if remediation %}
+<section class="pw-section">
+  <div class="h2">Targeted revision</div>
+  <p class="small muted" style="margin:-.4rem 0 1rem">Built from the questions you missed. Revisit these lessons, then retry.</p>
+  <div class="grid-2">
+  {% for rm in remediation %}
+    <article class="pw-card remedy">
+      <div class="row between"><h3>{{ rm.lesson_title }}</h3><span class="chip">{{ rm.competency_name }}</span></div>
+      <ul class="reasons">{% for m in rm.missed %}<li><b>{{ m.question }}</b><br><span class="muted">{{ m.explanation }}</span></li>{% endfor %}</ul>
+      <a class="btn btn-soft btn-sm" style="margin-top:.6rem" href="{{ url_for('pathways.course_page', course_id=c.id, lesson=rm.lesson_id, roadmap=rid) }}">Revise this lesson</a>
+    </article>
+  {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="pw-section">
+  <div class="h2">Review answers</div>
+  {% for d in r.details %}
+  <fieldset class="q review">
+    <legend><span class="qn">Q{{ loop.index }}.</span>{{ d.text }} {% if d.correct %}<span class="chip ok">Correct</span>{% else %}<span class="chip bad">{{ 'Unanswered' if d.chosen is none else 'Incorrect' }}</span>{% endif %}</legend>
+    {% for opt in d.options %}
+      {% if loop.index0 == d.answer %}{% set cls = 'correct' %}{% elif loop.index0 == d.chosen %}{% set cls = 'wrong' %}{% else %}{% set cls = '' %}{% endif %}
+      <div class="opt {{ cls }}">{{ opt }}{% if loop.index0 == d.chosen %} <span class="xs muted">(your answer)</span>{% endif %}</div>
+    {% endfor %}
+    <p class="small muted" style="margin-top:.4rem">{{ d.explanation }}</p>
+  </fieldset>
+  {% endfor %}
+</section>
+{% endblock %}

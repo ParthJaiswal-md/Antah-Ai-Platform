@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% block title %}{{ rm.goal_title }} roadmap · Antah.ai{% endblock %}
+{% block body_class %}roadmap-page{% endblock %}
+{% block container_class %}container-full{% endblock %}
+{% block content %}
+<div class="rm-shell">
+  <div class="rm-bar">
+    <div class="title">
+      <div class="ring sm" id="rmRing" style="--p:{{ rm.readiness }}"><b id="rmReadiness">{{ rm.readiness }}%</b></div>
+      <div style="min-width:0">
+        <div class="meta">Learning roadmap · <span class="demo-tag">Demo data</span></div>
+        <h1>{{ rm.goal_title }}</h1>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat-mini hide-sm">Courses done<b id="rmDone">–</b></div>
+      <div class="stat-mini hide-sm">Updated<b id="rmUpdated" title="Roadmaps recalculate automatically after every assessment, lab or profile change">v{{ rm.version }}</b></div>
+      {% if all_roadmaps|length > 1 %}
+      <select id="rmSwitch" aria-label="Switch roadmap">
+        {% for r in all_roadmaps %}<option value="{{ r.id }}" {{ 'selected' if r.id == rm.id }}>{{ r.goal_title }}</option>{% endfor %}
+      </select>
+      {% endif %}
+      <span id="rmNext"></span>
+      <button class="btn btn-soft btn-sm" id="rmRegen" title="Recalculate from your latest competencies and completions">Recalculate</button>
+    </div>
+  </div>
+
+  <div class="rm-stage">
+    <div class="rm-canvas" id="rmCanvas" aria-label="Interactive learning roadmap. Drag to pan, scroll or pinch to zoom, press Enter on a step for details."></div>
+    <div class="rm-legend" id="rmLegend">
+      <div class="items" role="list" aria-label="Legend">
+        <b>Legend</b>
+        <span class="lg" role="listitem"><i class="completed"></i>Completed</span>
+        <span class="lg" role="listitem"><i class="in_progress"></i>In progress</span>
+        <span class="lg" role="listitem"><i class="available"></i>Available</span>
+        <span class="lg" role="listitem"><i class="recommended"></i>Recommended next</span>
+        <span class="lg" role="listitem"><i class="locked"></i>Locked (prerequisite unmet)</span>
+        <span class="lg" role="listitem"><i class="unavailable"></i>Unavailable resource</span>
+        <span class="lg" role="listitem"><i class="milestone"></i>Skill milestone</span>
+        <span class="lg" role="listitem"><i class="edge-done"></i>Travelled</span>
+        <span class="lg" role="listitem"><i class="edge-next"></i>Next step</span>
+        <button class="toggle" id="legendToggle" aria-expanded="true">Hide</button>
+      </div>
+    </div>
+    <div class="rm-controls" id="rmControls"></div>
+    <div class="rm-zoom" id="rmZoom">100%</div>
+    <div class="rm-minimap" id="rmMini" aria-label="Minimap. Click to move the view."></div>
+  </div>
+</div>
+
+<aside class="drawer" id="drawer" aria-hidden="true" role="dialog" aria-labelledby="drawerTitle">
+  <div class="drawer-head"><div id="drawerTitle" style="min-width:0"></div><button class="drawer-close" id="drawerClose" aria-label="Close details"></button></div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-foot" id="drawerFoot"></div>
+</aside>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/roadmap.js') }}"></script>
+<script>
+(function () {
+  var RID = {{ rm.id|tojson }};
+  var GOAL_URL = {{ url_for('pathways.goal_page', goal_id=rm.goal_id)|tojson }};
+  var I = PW.icons, esc = PW.esc;
+  var canvas = document.getElementById('rmCanvas');
+
+  var drawerEl = document.getElementById('drawer');
+  var state = { data: null };
+  var map = new PWRoadmap.Roadmap(canvas, {
+    minimap: document.getElementById('rmMini'),
+    onZoom: function (k) { document.getElementById('rmZoom').textContent = Math.round(k * 100) + '%'; },
+    onSelect: openDrawer,
+    onClear: closeDrawer
+  });
+
+  var ctl = document.getElementById('rmControls');
+  [['plus', 'Zoom in', function () { map.zoomBy(1.25, null, null, true); }],
+   ['minus', 'Zoom out', function () { map.zoomBy(0.8, null, null, true); }],
+   ['fit', 'Fit to view', function () { map.fit(true); }],
+   ['reset', 'Reset to start (100%)', function () { map.reset(); }]].forEach(function (b) {
+    var btn = document.createElement('button');
+    btn.innerHTML = I[b[0]]; btn.title = b[1]; btn.setAttribute('aria-label', b[1]);
+    btn.addEventListener('click', b[2]); ctl.appendChild(btn);
+  });
+  document.getElementById('drawerClose').innerHTML = I.close;
+  document.getElementById('drawerClose').addEventListener('click', function () { map.clearSelection(true); });
+  document.addEventListener('keydown', function (e) {
+    if (e.target.matches('input,select,textarea')) return;
+    if (e.key === 'Escape') map.clearSelection(true);
+    if (e.key === '+' || e.key === '=') map.zoomBy(1.2, null, null, true);
+    if (e.key === '-') map.zoomBy(0.83, null, null, true);
+    if (e.key === '0') map.fit(true);
+  });
+  var lgBtn = document.getElementById('legendToggle');
+  lgBtn.addEventListener('click', function () {
+    var c = document.getElementById('rmLegend').classList.toggle('collapsed');
+    lgBtn.textContent = c ? 'Show' : 'Hide'; lgBtn.setAttribute('aria-expanded', c ? 'false' : 'true');
+  });
+  if (window.innerWidth < 760) { document.getElementById('rmLegend').classList.add('collapsed'); lgBtn.textContent = 'Show'; }
+  var sw = document.getElementById('rmSwitch');
+  if (sw) sw.addEventListener('change', function () { window.location.href = '/roadmaps/' + sw.value; });
+
+  function showState(kind, msg) {
+    var old = canvas.querySelector('.rm-state'); if (old) old.remove();
+    if (!kind) return;
+    var el = document.createElement('div'); el.className = 'rm-state';
+    el.innerHTML = kind === 'loading'
+      ? '<div class="box"><div class="skeleton"><span></span><span></span><span></span><span></span></div><h3>Building your roadmap…</h3><p class="small muted">Calculating gaps, prerequisites and the best order.</p></div>'
+      : kind === 'error'
+      ? '<div class="box"><h3>Could not load this roadmap</h3><p class="small muted">' + esc(msg) + '</p><button class="btn btn-primary btn-sm" id="rmRetry" style="margin-top:.8rem">Try again</button></div>'
+      : '<div class="box"><div class="ring lg" style="--p:100;--c:var(--done);margin:0 auto"><b>100%</b></div><h3>You already meet this goal</h3><p class="small muted">' + esc(msg) + '</p><a class="btn btn-soft btn-sm" style="margin-top:.8rem" href="' + GOAL_URL + '">View requirements</a> <button class="btn btn-ghost btn-sm" id="rmDismiss">Show map</button></div>';
+    canvas.appendChild(el);
+    var retry = el.querySelector('#rmRetry'); if (retry) retry.addEventListener('click', load);
+    var dis = el.querySelector('#rmDismiss'); if (dis) dis.addEventListener('click', function () { el.remove(); });
+  }
+
+  function paint(rm) {
+    state.data = rm;
+    var courses = rm.nodes.filter(function (n) { return n.type === 'course'; });
+    var done = courses.filter(function (n) { return n.state === 'completed'; }).length;
+    document.getElementById('rmDone').textContent = done + ' / ' + courses.length;
+    document.getElementById('rmReadiness').textContent = rm.readiness + '%';
+    document.getElementById('rmRing').style.setProperty('--p', rm.readiness);
+    document.getElementById('rmUpdated').textContent = 'v' + rm.version;
+    var nx = document.getElementById('rmNext');
+    nx.innerHTML = rm.next_action
+      ? '<button class="btn btn-primary btn-sm" id="rmNextBtn">' + esc(rm.next_action.verb) + ': ' + esc(rm.next_action.title) + '</button>'
+      : '';
+    var nb = document.getElementById('rmNextBtn');
+    if (nb) nb.addEventListener('click', function () {
+      var id = 'course:' + rm.next_action.course_id; map.select(id); map.centerOn(id, Math.max(map.t.k, 0.9), true);
+    });
+    map.render(rm);
+    showState(null);
+    var goal = rm.nodes.filter(function (n) { return n.type === 'goal'; })[0];
+    if (goal && goal.state === 'completed' && courses.length === 0) showState('empty', 'Your current evidence already reaches every target for this goal.');
+  }
+
+  function load() {
+    showState('loading');
+    PW.api('GET', '/api/pathways/roadmaps/' + RID).then(function (d) { paint(d.roadmap); })
+      .catch(function (err) { showState('error', err.message); });
+  }
+
+  function openDrawer(node) {
+    var parts = PWRoadmap.drawer(node, { roadmapId: RID, data: state.data, nodes: map.nodes, analysis: state.data.analysis, goalUrl: GOAL_URL });
+    document.getElementById('drawerTitle').innerHTML = parts.head;
+    document.getElementById('drawerBody').innerHTML = parts.body;
+    var foot = document.getElementById('drawerFoot');
+    foot.innerHTML = parts.foot; foot.style.display = parts.foot ? '' : 'none';
+    drawerEl.classList.add('open'); drawerEl.setAttribute('aria-hidden', 'false');
+    map.drawerOpen = true;
+    var r = canvas.getBoundingClientRect(), el = map.els[node.id].getBoundingClientRect();
+    var visibleRight = r.width > 760 ? r.right - 440 : r.right;
+    var visibleBottom = r.width > 760 ? r.bottom : r.top + r.height * 0.22;
+    if (el.right > visibleRight - 20 || el.left < r.left || el.bottom > visibleBottom || el.top < r.top) map.centerOn(node.id, null, true);
+    var start = foot.querySelector('[data-start]');
+    if (start) start.addEventListener('click', function () {
+      start.disabled = true; start.textContent = 'Starting…';
+      PW.api('POST', '/api/pathways/courses/' + encodeURIComponent(start.getAttribute('data-start')) + '/start', {})
+        .then(function (d) { window.location.href = d.url + '?roadmap=' + RID; })
+        .catch(function (err) { PW.toast(err.message, true); start.disabled = false; start.textContent = 'Start learning'; });
+    });
+    var pre = foot.querySelector('[data-prereqs]');
+    if (pre) pre.addEventListener('click', function () {
+      map.highlightPath(pre.getAttribute('data-prereqs'));
+      PW.toast('Highlighted the steps that lead to this course.');
+    });
+    document.getElementById('drawerClose').focus({ preventScroll: true });
+  }
+  function closeDrawer() {
+    drawerEl.classList.remove('open'); drawerEl.setAttribute('aria-hidden', 'true'); map.drawerOpen = false;
+  }
+
+  document.getElementById('rmRegen').addEventListener('click', function () {
+    var b = this; b.disabled = true; b.textContent = 'Recalculating…';
+    PW.api('POST', '/api/pathways/roadmaps/' + RID + '/regenerate', {}).then(function (d) {
+      closeDrawer(); paint(d.roadmap); PW.toast('Roadmap recalculated from your latest evidence.');
+    }).catch(function (err) { PW.toast(err.message, true); })
+      .then(function () { b.disabled = false; b.textContent = 'Recalculate'; });
+  });
+
+  load();
+})();
+</script>
+{% endblock %}

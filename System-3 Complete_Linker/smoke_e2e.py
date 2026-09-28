@@ -135,7 +135,7 @@ def main() -> int:
     check("bad password rejected", r.status_code == 401
           and "Incorrect password. Please try again." in r.get_json()["error"])
     r = client.post("/login", json={"username": "demo", "password": "secret"})
-    check("good login redirects", r.status_code == 200 and r.get_json().get("redirect") == "/recommendation")
+    check("good login redirects", r.status_code == 200 and r.get_json().get("redirect") == "/dashboard")  # login now lands on the Learning Pathways dashboard
 
     # 4. Intake page ---------------------------------------------------------
     r = client.get("/recommendation")

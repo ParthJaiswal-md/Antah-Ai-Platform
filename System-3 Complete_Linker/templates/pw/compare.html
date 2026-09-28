@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Compare demo learners · Antah.ai{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% block content %}
+<div class="pw-head">
+  <div>
+    <div class="eyebrow">Same goal, same engine, different learners</div>
+    <h1>Compare demo learners</h1>
+    <p>Both journeys below are generated live from each demo learner's current competency evidence. Nothing is hard-coded per user.</p>
+  </div>
+  <div class="row">
+    <label for="goalSel" class="small" style="margin:0">Goal</label>
+    <select id="goalSel" style="width:auto">
+      {% for g in goals.values() %}<option value="{{ g.id }}" {{ 'selected' if g.id == goal_id }}>{{ g.title }}</option>{% endfor %}
+    </select>
+  </div>
+</div>
+<div class="grid-2" id="cols">
+  <div class="pw-card"><div class="skeleton"><span></span><span></span><span></span></div></div>
+  <div class="pw-card"><div class="skeleton"><span></span><span></span><span></span></div></div>
+</div>
+<div class="demo-banner"><span class="demo-tag">Demo</span><span>Demo learners Asha and Ravi are fictional demonstration profiles. Log in as <code>demo_asha</code> or <code>demo_ravi</code> (password <code>demo1234</code>) to take their journeys. Demo accounts can <button class="linkish" id="resetDemo">reset both demo learners</button> to their starting state.</span></div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/roadmap.js') }}"></script>
+<script>
+(function () {
+  var esc = PW.esc, BASIS = { assessment: 'Validated', self_reported: 'Self-reported', none: 'No evidence' };
+  var sel = document.getElementById('goalSel');
+  sel.addEventListener('change', function () { history.replaceState(null, '', '?goal=' + sel.value); load(); });
+  function col(l) {
+    var rm = l.roadmap, a = rm.analysis;
+    var recs = a.recommendations.map(function (r) {
+      var chip = r.status === 'ready' ? 'brand' : r.status === 'locked' ? 'lock' : 'bad';
+      return '<div class="rec-line"><span class="rec-rank" style="width:24px;height:24px;font-size:.75rem">' + r.rank + '</span><div style="flex:1"><b>' + esc(r.title) + '</b> <span class="chip ' + chip + '">' + esc(r.status) + '</span><div class="xs muted">' + esc(r.reasons[0] || '') + '</div></div></div>';
+    }).join('');
+    var skipped = a.skipped.filter(function (s) { return s.kind === 'prereq_met' || s.kind === 'already_met'; }).map(function (s) {
+      return '<div class="rec-line"><span class="chip ok">Skipped</span><div class="small"><b>' + esc(s.title) + '</b><div class="xs muted">' + esc(s.reason) + '</div></div></div>';
+    }).join('');
+    var gaps = a.gaps.map(function (g) {
+      return '<div class="dev-row"><span class="small">' + esc(g.name) + ' <span class="basis ' + g.basis + '">' + BASIS[g.basis] + '</span></span><span class="xs muted">' + g.current + ' / ' + g.target + '</span><div class="bar thin"><span class="fill ' + g.basis + '" style="width:' + g.current + '%"></span>' + (g.gap ? '<span class="gapfill" style="left:' + g.current + '%;width:' + g.gap + '%"></span>' : '') + '<span class="target" style="left:' + g.target + '%"></span></div></div>';
+    }).join('');
+    var deps = rm.dependency_edges.length ? rm.dependency_edges.map(function (d) { return esc(d[0]) + ' → ' + esc(d[1]); }).join(', ') : 'none: starts directly on goal-level courses';
+    return '<div class="compare-col"><div class="pw-card"><div class="row" style="gap:.9rem"><div class="ring" style="--p:' + a.readiness + '"><b>' + a.readiness + '%</b></div><div><h3>' + esc(l.name) + '</h3><div class="xs muted">' + esc(l.profile.education || '') + ' · ' + (l.profile.experience_years != null ? l.profile.experience_years + ' yrs' : '') + '</div><div class="xs muted">' + rm.summary.courses_total + ' courses on the roadmap · prerequisite links: ' + deps + '</div></div></div></div>' +
+      '<div class="pw-card"><div class="mini-title">Generated roadmap</div><div class="mini-rm"><div class="rm-canvas" data-mini></div></div><p class="xs muted" style="margin-top:.4rem">Drag or scroll to explore. Open your own roadmap for full details.</p></div>' +
+      '<div class="pw-card"><div class="mini-title">Recommendations, in order</div>' + recs + (skipped ? '<div class="mini-title" style="margin-top:.8rem">Not needed for this learner</div>' + skipped : '') + '</div>' +
+      '<div class="pw-card"><div class="mini-title">Current competency vs goal</div>' + gaps + '</div></div>';
+  }
+  function load() {
+    var cols = document.getElementById('cols');
+    PW.api('GET', '/api/pathways/compare?goal=' + encodeURIComponent(sel.value)).then(function (d) {
+      cols.innerHTML = d.learners.map(col).join('');
+      var minis = cols.querySelectorAll('[data-mini]');
+      d.learners.forEach(function (l, i) {
+        var m = new PWRoadmap.Roadmap(minis[i], { compact: true });
+        m.render({ nodes: l.roadmap.nodes, edges: l.roadmap.edges, width: l.roadmap.size.width, height: l.roadmap.size.height });
+      });
+    }).catch(function (e) { cols.innerHTML = '<div class="form-error">' + esc(e.message) + '</div>'; });
+  }
+  document.getElementById('resetDemo').addEventListener('click', function () {
+    PW.api('POST', '/api/pathways/demo/reset', {}).then(function () { PW.toast('Demo learners reset to their starting profiles.'); load(); })
+      .catch(function (e) { PW.toast(e.message, true); });
+  });
+  load();
+})();
+</script>
+{% endblock %}

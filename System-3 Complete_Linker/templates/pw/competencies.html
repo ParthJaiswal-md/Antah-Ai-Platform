@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% block title %}My competencies · Antah.ai{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% set BASIS = {'assessment': 'Validated', 'self_reported': 'Self-reported', 'none': 'No evidence', 'resume_inferred': 'Resume suggestion'} %}
+{% set p = v.profile %}
+{% block content %}
+<div class="pw-head">
+  <div>
+    <div class="eyebrow">Step 1 · Competency profile</div>
+    <h1>What can you do today?</h1>
+    <p>Rate yourself honestly. Your rating is used as <b>self-reported</b> evidence until an assessment validates it. Resume suggestions only count after you confirm them.</p>
+  </div>
+</div>
+
+<div class="grid-side">
+  <div>
+    <section class="pw-card">
+      <div class="h2">About you</div>
+      <div class="grid-2">
+        <div class="field"><label for="f_name">Display name</label><input id="f_name" value="{{ p.display_name }}" maxlength="80"></div>
+        <div class="field"><label for="f_org">Organisation / department</label>
+          <select id="f_org">
+            <option value="">Not specified</option>
+            {% for o in v.organizations %}<option value="{{ o.id }}" {{ 'selected' if o.id == p.organization_id }}>{{ o.name }}</option>{% endfor %}
+          </select>
+          {% if v.organizations %}<div class="hint">From the project's department list (names only; no requirements inferred).</div>{% endif %}
+        </div>
+        <div class="field"><label for="f_exp">Work experience (years)</label><input id="f_exp" type="number" min="0" max="60" value="{{ p.experience_years if p.experience_years is not none }}"></div>
+        <div class="field"><label for="f_edu">Education</label><input id="f_edu" value="{{ p.education }}" maxlength="160"></div>
+      </div>
+      <div class="field" style="margin-bottom:0"><label for="f_int">Learning interests</label><input id="f_int" value="{{ p.interests }}" maxlength="300" placeholder="e.g. survey methods, dashboards"></div>
+    </section>
+
+    <section class="pw-card pw-section">
+      <div class="row between" style="margin-bottom:.5rem"><div class="h2" style="margin:0">Competencies</div><span class="xs muted">Self-rating on a 0–100 scale</span></div>
+      <div class="scale-guide" style="margin-bottom:.6rem">
+        <div><b>0</b>No exposure</div><div><b>1–34</b>Beginner: needs guidance</div><div><b>35–64</b>Working: independent on routine tasks</div><div><b>65–100</b>Advanced: can teach or review others</div>
+      </div>
+      {% for cat, items in v.competencies|groupby('category') %}
+        <div class="cat-title" style="margin-top:1.2rem">{{ cat }}</div>
+        {% for c in items %}
+        <div class="comp-edit" data-comp="{{ c.id }}">
+          <div>
+            <b>{{ c.name }}</b>
+            {% if c.suggested is not none %}<span class="basis suggested" title="Unconfirmed resume suggestion">Resume: {{ c.suggested }}</span>{% endif %}
+            <div class="desc">{{ c.description }}</div>
+          </div>
+          <div class="slider">
+            <input type="range" min="0" max="100" step="5" value="{{ c.self_reported or 0 }}" aria-label="Self-rating for {{ c.name }}">
+            <input type="number" min="0" max="100" value="{{ c.self_reported or 0 }}" aria-label="Self-rating value for {{ c.name }}">
+          </div>
+          <div class="eff">
+            <b>{{ c.level }}</b>
+            <span class="basis {{ c.basis }}">{{ BASIS[c.basis] }}</span>
+            {% if c.evidence %}<div><button class="linkish xs" data-toggle-log>Evidence ({{ c.evidence|length }})</button></div>{% endif %}
+          </div>
+          {% if c.evidence %}
+          <div class="evidence-log">
+            <div class="muted">{{ c.explanation }}</div>
+            {% for e in c.evidence|reverse %}
+            <div><span class="basis {{ e.source }}">{{ BASIS[e.source] }}</span> <b>{{ e.level }}</b> · {{ e.created_at[:10] }}{% if e.source == 'resume_inferred' %} · {{ 'confirmed' if e.confirmed else 'awaiting confirmation' }}{% endif %}<br><span class="muted">{{ e.note }}</span></div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% endfor %}
+    </section>
+
+    <div class="sticky-save">
+      <span class="small muted" id="dirtyNote">Changes update every saved roadmap automatically.</span>
+      <button class="btn btn-primary" id="saveBtn">Save profile</button>
+    </div>
+  </div>
+
+  <aside>
+    <section class="pw-card">
+      <div class="h2">Resume assist <span class="chip warn">AI-assisted · optional</span></div>
+      <p class="small muted">Paste your resume or upload a .txt/.pdf (max 2 MB). The file is read in memory and not stored. We only <b>suggest</b> competencies, capped at 45. Nothing counts until you confirm it.</p>
+      <label class="dropzone" id="drop" for="resumeFile" style="margin-top:.8rem">
+        <input type="file" id="resumeFile" accept=".txt,.pdf" hidden>
+        <span id="dropText">Drop a file here or <u>browse</u></span>
+      </label>
+      <div class="field" style="margin-top:.7rem"><label for="resumeText" class="small">…or paste text</label><textarea id="resumeText" rows="5" placeholder="e.g. Built pandas pipelines for PLFS data; wrote SQL joins across district tables…"></textarea></div>
+      <button class="btn btn-soft btn-sm" id="extractBtn" style="width:100%">Suggest competencies</button>
+      <div id="resumeError" class="form-error" style="display:none;margin-top:.7rem"></div>
+
+      <div id="suggBox" style="margin-top:1rem;{{ '' if v.suggestions else 'display:none' }}">
+        <div class="mini-title">Suggestions to confirm</div>
+        <div id="suggList">
+          {% for s in v.suggestions %}
+          <div class="sugg" data-id="{{ s.id }}">
+            <div><b class="small">{{ s.name }}</b><div class="xs muted">{{ s.note }}</div></div>
+            <input type="number" min="0" max="100" value="{{ s.level }}" aria-label="Level to confirm for {{ s.name }}">
+            <div class="row" style="gap:.3rem"><button class="btn btn-brand btn-sm" data-accept>Confirm</button><button class="btn btn-ghost btn-sm" data-reject>Reject</button></div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+    <section class="pw-card pw-section">
+      <div class="h2" style="font-size:1rem">How levels change</div>
+      <ul class="reasons">
+        <li><b>Self-rating</b> is used until you have assessment evidence.</li>
+        <li><b>Passing an assessment</b> (≥70%) records validated evidence. Its level scales with how many questions you answered correctly for that competency.</li>
+        <li><b>Opening a course or reading lessons</b> never raises a level.</li>
+        <li>If a validated level is lower than your self-rating, the <b>validated level wins</b>.</li>
+      </ul>
+    </section>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  if (sessionStorage.getItem('pwSaved')) { sessionStorage.removeItem('pwSaved'); PW.toast('Profile saved. Your roadmaps were recalculated.'); }
+  var initial = {};
+  document.querySelectorAll('.comp-edit').forEach(function (row) {
+    var range = row.querySelector('input[type=range]'), num = row.querySelector('input[type=number]');
+    initial[row.dataset.comp] = +num.value;
+    range.addEventListener('input', function () { num.value = range.value; mark(); });
+    num.addEventListener('input', function () { var v = Math.max(0, Math.min(100, +num.value || 0)); range.value = v; mark(); });
+    var t = row.querySelector('[data-toggle-log]');
+    if (t) t.addEventListener('click', function () { row.querySelector('.evidence-log').classList.toggle('open'); });
+  });
+  function mark() { document.getElementById('dirtyNote').textContent = 'Unsaved changes'; }
+
+  document.getElementById('saveBtn').addEventListener('click', function () {
+    var btn = this, levels = {};
+    document.querySelectorAll('.comp-edit').forEach(function (row) {
+      var v = +row.querySelector('input[type=number]').value;
+      if (v !== initial[row.dataset.comp]) levels[row.dataset.comp] = v;
+    });
+    var basics = {
+      display_name: document.getElementById('f_name').value, organization_id: document.getElementById('f_org').value,
+      experience_years: document.getElementById('f_exp').value, education: document.getElementById('f_edu').value,
+      interests: document.getElementById('f_int').value
+    };
+    btn.disabled = true; btn.textContent = 'Saving…';
+    PW.api('PUT', '/api/pathways/profile', { basics: basics, levels: levels }).then(function () {
+      sessionStorage.setItem('pwSaved', '1'); window.location.reload();
+    }).catch(function (e) { PW.toast(e.message, true); btn.disabled = false; btn.textContent = 'Save profile'; });
+  });
+
+  // ---- resume ----
+  var file = document.getElementById('resumeFile'), drop = document.getElementById('drop'), chosen = null;
+  file.addEventListener('change', function () { chosen = file.files[0] || null; document.getElementById('dropText').textContent = chosen ? chosen.name : 'Drop a file here or browse'; });
+  ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('drag'); }); });
+  ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('drag'); }); });
+  drop.addEventListener('drop', function (e) { chosen = e.dataTransfer.files[0]; document.getElementById('dropText').textContent = chosen ? chosen.name : ''; });
+
+  document.getElementById('extractBtn').addEventListener('click', function () {
+    var btn = this, errBox = document.getElementById('resumeError'); errBox.style.display = 'none';
+    var fd = new FormData();
+    if (chosen) fd.append('file', chosen); else fd.append('text', document.getElementById('resumeText').value);
+    btn.disabled = true; btn.textContent = 'Analysing…';
+    PW.api('POST', '/api/pathways/resume', fd, true).then(function (d) {
+      renderSuggestions(d.view.suggestions);
+      PW.toast(d.count ? d.count + ' suggestion(s) found. Please confirm or reject each.' : 'No competencies recognised in that text.');
+    }).catch(function (e) { errBox.textContent = e.message; errBox.style.display = 'block'; })
+      .then(function () { btn.disabled = false; btn.textContent = 'Suggest competencies'; });
+  });
+
+  function renderSuggestions(list) {
+    var box = document.getElementById('suggBox'), el = document.getElementById('suggList');
+    box.style.display = list.length ? '' : 'none';
+    el.innerHTML = list.map(function (s) {
+      return '<div class="sugg" data-id="' + s.id + '"><div><b class="small">' + PW.esc(s.name) + '</b><div class="xs muted">' + PW.esc(s.note) + '</div></div>' +
+        '<input type="number" min="0" max="100" value="' + s.level + '" aria-label="Level to confirm"><div class="row" style="gap:.3rem"><button class="btn btn-brand btn-sm" data-accept>Confirm</button><button class="btn btn-ghost btn-sm" data-reject>Reject</button></div></div>';
+    }).join('');
+  }
+  document.getElementById('suggList').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-accept],[data-reject]'); if (!btn) return;
+    var row = btn.closest('.sugg'), accept = btn.hasAttribute('data-accept');
+    PW.api('POST', '/api/pathways/resume/' + row.dataset.id, { accept: accept, level: row.querySelector('input').value })
+      .then(function () {
+        if (accept) { sessionStorage.setItem('pwSaved', '1'); window.location.reload(); }
+        else { row.remove(); if (!document.querySelector('#suggList .sugg')) document.getElementById('suggBox').style.display = 'none'; }
+      }).catch(function (err) { PW.toast(err.message, true); });
+  });
+})();
+</script>
+{% endblock %}

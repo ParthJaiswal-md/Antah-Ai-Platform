@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block title %}{{ a.goal.title }} · Antah.ai{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% set BASIS = {'assessment': 'Validated', 'self_reported': 'Self-reported', 'none': 'No evidence'} %}
+{% set STATUS = {'ready': ('Ready to start', 'brand'), 'locked': ('Locked', 'lock'), 'unavailable': ('Unavailable', 'bad')} %}
+{% set SCORE = [('gap_coverage', 'Gap coverage'), ('goal_relevance', 'Goal relevance'), ('prereq_readiness', 'Prerequisite readiness'), ('level_fit', 'Level fit')] %}
+{% block content %}
+<div class="pw-head">
+  <div>
+    <div class="eyebrow"><a href="{{ url_for('pathways.goals_page') }}">Goals</a> / Gap analysis</div>
+    <h1>{{ a.goal.title }}</h1>
+    <p>{{ a.goal.description }}</p>
+  </div>
+  <div class="row" style="gap:1rem">
+    <div class="ring lg" style="--p:{{ a.readiness }}"><b>{{ a.readiness }}%</b></div>
+    <div class="small muted" style="max-width:160px">Weighted readiness from your current evidence</div>
+  </div>
+</div>
+
+<div class="grid-side">
+  <div>
+    <section class="pw-card">
+      <div class="h2" style="margin-bottom:.4rem">1 · Competency requirements and your gaps</div>
+      <p class="small muted" style="margin-bottom:1rem">Targets use a 0–100 scale. The striped segment is the gap. Missing evidence is treated as 0 and flagged.</p>
+      <table class="gap-table">
+        <thead><tr><th>Competency</th><th class="hide-sm">Evidence</th><th>You → target</th><th></th></tr></thead>
+        <tbody>
+        {% for g in a.gaps %}
+          <tr>
+            <td><b>{{ g.name }}</b><div class="xs muted">Priority {{ '●' * g.weight }}{{ '○' * (3 - g.weight) }}</div></td>
+            <td class="hide-sm"><span class="basis {{ g.basis }}">{{ BASIS[g.basis] }}</span></td>
+            <td class="num">{{ g.current }} → {{ g.target }}{% if g.met %} <span class="chip ok">met</span>{% else %} <span class="xs muted">(gap {{ g.gap }})</span>{% endif %}</td>
+            <td class="barcell"><div class="bar"><span class="fill {{ g.basis }}" style="width:{{ g.current }}%"></span>{% if not g.met %}<span class="gapfill" style="left:{{ g.current }}%;width:{{ g.gap }}%"></span>{% endif %}<span class="target" style="left:{{ g.target }}%" data-label="{{ g.target }}"></span></div></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% for p in a.entry_prerequisites %}
+        <div class="notice" style="margin-top:1rem">Entry expectation: <b>{{ p.name }} ≥ {{ p.min_level }}</b> (you: {{ p.current }}). {{ p.note }}</div>
+      {% endfor %}
+      {% if a.uncovered %}
+        <div class="form-error" style="margin-top:1rem">No available course closes: {{ a.uncovered|map(attribute='name')|join(', ') }}. It stays on the roadmap as an <b>unavailable</b> step so the gap is not hidden.</div>
+      {% endif %}
+    </section>
+
+    <section class="pw-section">
+      <div class="h2">2 · Recommended courses <span class="count">{{ a.recommendations|length }}</span></div>
+      <p class="small muted" style="margin:-.4rem 0 1rem">A small set chosen to close your weighted gap. Courses you can start now come first. A locked course never outranks one you can start, whatever its score.</p>
+      {% for r in a.recommendations %}
+      {% set st = STATUS[r.status] %}
+      <article class="pw-card rec-card {{ r.status }}" style="margin-bottom:1rem">
+        <div class="row" style="align-items:flex-start;gap:.8rem">
+          <div class="rec-rank">{{ r.rank }}</div>
+          <div style="flex:1;min-width:0">
+            <div class="row between" style="align-items:flex-start">
+              <h3>{{ r.title }}</h3>
+              <div class="row" style="gap:.35rem">
+                <span class="chip {{ st[1] }}">{{ st[0] }}</span>
+                {% if r.role == 'prerequisite' %}<span class="chip warn">Foundation</span>{% endif %}
+                <span class="chip">{{ r.difficulty|title }}</span>
+              </div>
+            </div>
+            <p class="small muted" style="margin-top:.2rem">{{ r.summary }}</p>
+            <ul class="reasons">{% for reason in r.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
+          </div>
+        </div>
+        <div class="rec-grid">
+          <div>
+            <div class="mini-title">Competencies developed</div>
+            {% for dv in r.develops %}
+            <div class="dev-row"><span>{{ dv.name }}</span><span class="xs muted">now {{ dv.current }} → up to {{ dv.course_reaches }}{% if dv.target is not none %} · goal {{ dv.target }}{% else %} · not in goal{% endif %}</span>
+              <div class="bar thin"><span class="fill {{ dv.basis }}" style="width:{{ dv.current }}%"></span>{% if dv.course_reaches > dv.current %}<span class="gapfill" style="left:{{ dv.current }}%;width:{{ dv.course_reaches - dv.current }}%"></span>{% endif %}{% if dv.target is not none %}<span class="target" style="left:{{ dv.target }}%"></span>{% endif %}</div>
+            </div>
+            {% endfor %}
+            <div class="mini-title" style="margin-top:.8rem">Learning outcomes</div>
+            <ul class="small" style="margin-left:1.1rem;color:var(--ink-2)">{% for o in r.outcomes %}<li>{{ o }}</li>{% endfor %}</ul>
+          </div>
+          <div>
+            <div class="mini-title">Score breakdown · {{ (r.score.total * 100)|round|int }}/100</div>
+            {% for key, label in SCORE %}
+            {% set v = (r.score.components[key] * 100)|round|int %}
+            <div class="score-row"><span>{{ label }} <span class="muted xs">×{{ (r.score.weights[key] * 100)|round|int }}%</span></span><div class="bar"><span class="fill" style="width:{{ v }}%"></span></div><b>{{ v }}</b></div>
+            {% endfor %}
+            <div class="mini-title" style="margin-top:.8rem">Prerequisites</div>
+            {% for p in r.prerequisites %}
+              <div class="prq"><span class="{{ 'ok' if p.satisfied else 'no' }}">{{ '✓' if p.satisfied else '✗' }}</span>{{ p.name }} ≥ {{ p.min_level }} <span class="xs muted">(you: {{ p.current }})</span></div>
+            {% else %}<div class="small muted">None</div>{% endfor %}
+            <div class="row small" style="margin-top:.8rem;gap:1rem">
+              <span><span class="mini-title" style="display:inline">Duration</span> {{ r.duration_minutes|minutes }}</span>
+              <span><span class="mini-title" style="display:inline">Availability</span> {% if r.availability == 'available' %}Available{% else %}<b style="color:var(--unav)">Unavailable</b>{% endif %}</span>
+            </div>
+            <div class="xs muted" style="margin-top:.3rem">Source: {{ 'Curated local catalogue (demo content)' if r.source == 'local' else 'iGOT connector: MOCK, not a live listing' }}</div>
+          </div>
+        </div>
+      </article>
+      {% else %}
+        <div class="pw-card"><b>No courses needed.</b> <span class="muted">Your current evidence meets every target for this goal.</span></div>
+      {% endfor %}
+
+      {% if a.skipped %}
+      <div class="pw-card flat" style="margin-top:1rem">
+        <div class="h2" style="font-size:1rem">Why not these courses?</div>
+        {% for s in a.skipped %}
+        <div class="skip-item"><span class="chip {{ 'ok' if s.kind in ('prereq_met', 'already_met', 'completed') else '' }}">{{ {'prereq_met': 'Skipped', 'already_met': 'Already met', 'completed': 'Completed', 'redundant': 'Not needed'}[s.kind] }}</span><div><b>{{ s.title }}</b><div class="muted">{{ s.reason }}</div></div></div>
+        {% endfor %}
+        {% if request.args.get('revision') != '1' %}<p class="xs muted" style="margin-top:.6rem">Want to revise completed courses? <a href="?revision=1">Include completed courses</a></p>{% endif %}
+      </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <aside style="position:sticky;top:90px">
+    <div class="pw-card">
+      <div class="h2" style="font-size:1rem">3 · Generate your roadmap</div>
+      <p class="small muted">The roadmap orders these courses by prerequisites. It shows where you can work in parallel, and it updates automatically as you learn.</p>
+      <div class="confirm-box" style="margin-top:.9rem">
+        <input type="checkbox" id="confirmReq" {{ 'checked' if a.roadmap_id }}>
+        <label for="confirmReq">I have reviewed the {{ a.gaps|length }} competency requirements and target levels for <b>{{ a.goal.title }}</b>.</label>
+      </div>
+      <div id="genError" class="form-error" style="display:none;margin-top:.8rem"></div>
+      <button class="btn btn-primary" id="genBtn" style="width:100%;margin-top:.9rem" {{ 'disabled' if not a.roadmap_id }}>
+        {{ 'Update & open roadmap' if a.roadmap_id else 'Generate & save roadmap' }}
+      </button>
+      {% if a.roadmap_id %}<a class="btn btn-ghost btn-sm" style="width:100%;margin-top:.4rem;text-align:center" href="{{ url_for('pathways.roadmap_page', roadmap_id=a.roadmap_id) }}">Open saved roadmap</a>{% endif %}
+      <hr class="divider">
+      <div class="mini-title">Scoring weights (configurable)</div>
+      {% for key, label in SCORE %}<div class="row between small"><span>{{ label }}</span><b>{{ (a.weights[key] * 100)|round|int }}%</b></div>{% endfor %}
+      <p class="xs muted" style="margin-top:.5rem">These are starting weights, not calibrated accuracy claims. Prerequisites and completion are hard rules applied before scoring.</p>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var cb = document.getElementById('confirmReq'), btn = document.getElementById('genBtn'), err = document.getElementById('genError');
+  cb.addEventListener('change', function () { btn.disabled = !cb.checked; });
+  btn.addEventListener('click', function () {
+    btn.disabled = true; btn.textContent = 'Generating roadmap…'; err.style.display = 'none';
+    PW.api('POST', '/api/pathways/roadmaps', { goal_id: {{ a.goal.id|tojson }}, confirmed: cb.checked })
+      .then(function (d) { window.location.href = d.url; })
+      .catch(function (e) { err.textContent = e.message; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Generate & save roadmap'; });
+  });
+})();
+</script>
+{% endblock %}

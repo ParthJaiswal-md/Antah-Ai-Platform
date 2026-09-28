@@ -1,0 +1,600 @@
+{
+  "_meta": {
+    "dataset": "AntahAI Learning Pathways - curated prototype catalogue",
+    "status": "DEMONSTRATION DATA",
+    "disclaimer": "Illustrative prototype content for SIH26101. Course titles, competency mappings, goal requirements and prerequisites are NOT official iGOT Karmayogi courses or official MoSPI job-role requirements and must be validated by domain owners before any real use.",
+    "scale": "Competency proficiency is stored on a 0-100 scale.",
+    "version": 1
+  },
+
+  "competencies": [
+    {"id": "py_basics", "name": "Python Programming Fundamentals", "category": "Technical", "s1_skill_id": null,
+     "description": "Writing and reading basic Python: variables, data types, control flow, functions and working with files.",
+     "keywords": ["python", "scripting", "jupyter", "programming", "pip", "functions"]},
+    {"id": "py_stats", "name": "Statistical Computing in Python", "category": "Technical", "s1_skill_id": null,
+     "description": "Using pandas, NumPy and SciPy to clean, summarise and test statistical data.",
+     "keywords": ["pandas", "numpy", "scipy", "dataframe", "statsmodels", "data wrangling"]},
+    {"id": "sql", "name": "Data Management & SQL", "category": "Technical", "s1_skill_id": null,
+     "description": "Querying and managing relational data with SQL: filtering, joining, aggregating and basic data modelling.",
+     "keywords": ["sql", "mysql", "postgres", "postgresql", "database", "query", "oracle", "sqlite", "joins"]},
+    {"id": "desc_stats", "name": "Descriptive Statistics", "category": "Statistical", "s1_skill_id": null,
+     "description": "Summarising data with measures of centre, spread and distribution shape; reading frequency tables.",
+     "keywords": ["descriptive statistics", "mean", "median", "standard deviation", "variance", "frequency distribution", "statistics"]},
+    {"id": "infer_stats", "name": "Inferential Statistics & Hypothesis Testing", "category": "Statistical", "s1_skill_id": null,
+     "description": "Drawing conclusions about populations from samples: standard errors, confidence intervals and hypothesis tests.",
+     "keywords": ["hypothesis testing", "t-test", "confidence interval", "p-value", "regression", "inference", "anova", "chi-square"]},
+    {"id": "sampling", "name": "Sampling Methods", "category": "Statistical", "s1_skill_id": "S015",
+     "description": "Designing representative samples: simple random, stratified, cluster and multi-stage sampling, and sampling weights.",
+     "keywords": ["sampling", "stratified", "cluster sampling", "sample size", "sampling weights", "sample design"]},
+    {"id": "survey_dq", "name": "Survey Design & Data Quality", "category": "Statistical", "s1_skill_id": null,
+     "description": "Questionnaire design, field operations, non-response and data-quality checks for official surveys.",
+     "keywords": ["survey", "questionnaire", "nsso", "plfs", "field work", "data quality", "non-response", "enumerator"]},
+    {"id": "dataviz", "name": "Data Visualization", "category": "Technical", "s1_skill_id": "S005",
+     "description": "Choosing and building honest, readable charts and dashboards for statistical releases.",
+     "keywords": ["visualization", "visualisation", "tableau", "power bi", "matplotlib", "dashboard", "charts", "plotly"]},
+    {"id": "dissem", "name": "Statistical Dissemination & Metadata", "category": "Statistical", "s1_skill_id": null,
+     "description": "Publishing official statistics with proper metadata, release calendars and standards such as SDMX.",
+     "keywords": ["sdmx", "metadata", "dissemination", "data release", "press release"]},
+    {"id": "applied_analysis", "name": "Applied Statistical Analysis & Reporting", "category": "Statistical", "s1_skill_id": null,
+     "description": "Carrying a real analysis end to end: weighting, estimation, testing and a written interpretation.",
+     "keywords": ["data analysis project", "analytical report", "research report", "econometrics"]}
+  ],
+
+  "courses": [
+    {
+      "id": "PY101",
+      "title": "Python Fundamentals for Data Analysis",
+      "summary": "A practical first course in Python for officials who will work with statistical data files.",
+      "difficulty": "beginner",
+      "duration_minutes": 240,
+      "duration_verified": true,
+      "source": "local",
+      "availability": "available",
+      "outcomes": [
+        "Write short Python programs using variables, lists and dictionaries",
+        "Use loops, conditions and functions to process records",
+        "Read a CSV file and compute simple totals"
+      ],
+      "develops": {"py_basics": 65},
+      "prerequisites": [],
+      "lessons": [
+        {"id": "py101-1", "title": "Values, variables and types", "minutes": 60, "body": [
+          "Python stores every piece of data as a **value** with a type. The types you will use most for data work are `int` (whole numbers), `float` (decimals), `str` (text) and `bool` (True/False).",
+          "A **variable** is a name that points to a value. Assigning creates or rebinds the name:",
+          {"code": ["households = 1250", "avg_size = 4.3", "state = \"Odisha\"", "population = households * avg_size   # 5375.0 - a float"]},
+          "Collections group values together:",
+          "- A **list** is an ordered sequence: `ages = [23, 41, 37]`. Index from 0, so `ages[0]` is 23.",
+          "- A **dictionary** maps keys to values: `hh = {\"id\": 17, \"size\": 5}`; read with `hh[\"size\"]`.",
+          "Use `type(x)` whenever you are unsure what a value is. Many data bugs come from numbers stored as text (\"42\" is a `str`, not an `int`)."
+        ]},
+        {"id": "py101-2", "title": "Control flow and functions", "minutes": 90, "body": [
+          "A `for` loop repeats a block for each item in a collection. An `if` statement runs a block only when a condition is true.",
+          {"code": ["sizes = [3, 6, 2, 8, 4]", "large = 0", "for s in sizes:", "    if s >= 6:", "        large += 1", "print(large)   # 2"]},
+          "A **function** packages logic under a name so you can reuse and test it. `def` defines it and `return` sends a result back:",
+          {"code": ["def mean(values):", "    return sum(values) / len(values)", "", "mean([3, 6, 2, 8, 4])   # 4.6"]},
+          "Keep functions small and give them names that describe the result. Indentation (four spaces) defines which lines belong inside a loop, condition or function."
+        ]},
+        {"id": "py101-3", "title": "Reading a data file", "minutes": 90, "body": [
+          "Survey extracts usually arrive as CSV files. The standard `csv` module reads them row by row as dictionaries:",
+          {"code": ["import csv", "", "total = 0", "with open(\"households.csv\", encoding=\"utf-8\") as f:", "    for row in csv.DictReader(f):", "        total += int(row[\"members\"])   # convert text to int", "print(total)"]},
+          "Note two habits: open files with `with` so they close automatically, and convert text fields to numbers explicitly.",
+          "In the next course you will switch to **pandas**, which reads a whole file into a table (a DataFrame) in one line - but the ideas here explain what it does for you."
+        ]}
+      ],
+      "quiz": {
+        "pass_threshold": 0.7,
+        "questions": [
+          {"id": "q1", "competency": "py_basics", "lesson": "py101-1", "text": "What is the type of the value produced by `1250 * 4.3`?",
+           "options": ["int", "float", "str", "bool"], "answer": 1,
+           "explanation": "Multiplying an int by a float gives a float (5375.0)."},
+          {"id": "q2", "competency": "py_basics", "lesson": "py101-1", "text": "Given `ages = [23, 41, 37]`, what does `ages[1]` return?",
+           "options": ["23", "41", "37", "An error"], "answer": 1,
+           "explanation": "Lists are indexed from 0, so index 1 is the second item, 41."},
+          {"id": "q3", "competency": "py_basics", "lesson": "py101-2", "text": "What does `return` do inside a function?",
+           "options": ["Prints the value", "Ends the program", "Sends a result back to the caller", "Restarts the loop"], "answer": 2,
+           "explanation": "`return` ends the function and hands its result to whoever called it."},
+          {"id": "q4", "competency": "py_basics", "lesson": "py101-2", "text": "For `sizes = [3, 6, 2, 8, 4]`, how many items satisfy `s >= 6`?",
+           "options": ["1", "2", "3", "4"], "answer": 1,
+           "explanation": "Only 6 and 8 are at least 6."},
+          {"id": "q5", "competency": "py_basics", "lesson": "py101-3", "text": "Why is `int(row[\"members\"])` needed when reading a CSV with csv.DictReader?",
+           "options": ["CSV values are read as text", "It removes blank rows", "It sorts the rows", "It closes the file"], "answer": 0,
+           "explanation": "csv.DictReader returns every field as a string; convert explicitly before doing arithmetic."}
+        ]
+      }
+    },
+
+    {
+      "id": "STAT101",
+      "title": "Statistics and Sampling Fundamentals",
+      "summary": "Core descriptive statistics and the sampling ideas behind every official survey estimate.",
+      "difficulty": "beginner",
+      "duration_minutes": 300,
+      "duration_verified": true,
+      "source": "local",
+      "availability": "available",
+      "outcomes": [
+        "Choose and compute appropriate measures of centre and spread",
+        "Explain why random samples allow inference about a population",
+        "Interpret a sampling weight and a standard error"
+      ],
+      "develops": {"desc_stats": 65, "sampling": 45, "infer_stats": 35},
+      "prerequisites": [],
+      "lessons": [
+        {"id": "stat101-1", "title": "Centre and spread", "minutes": 100, "body": [
+          "The **mean** is the arithmetic average; the **median** is the middle value once data are sorted. For skewed data such as household income, a few very large values pull the mean upward, so the median is usually the better summary of a 'typical' household.",
+          "Spread describes how far values sit from the centre:",
+          "- **Range** = maximum - minimum. Simple, but driven entirely by two extreme values.",
+          "- **Variance** is the average squared deviation from the mean; the **standard deviation (SD)** is its square root and is in the original units.",
+          "- The **interquartile range (IQR)** = Q3 - Q1 covers the middle 50% and is robust to outliers.",
+          "Example: for 2, 4, 4, 4, 5, 5, 7, 9 the mean is 5 and the population SD is 2."
+        ]},
+        {"id": "stat101-2", "title": "Populations, samples and randomness", "minutes": 100, "body": [
+          "A **population** is every unit we want to describe (all households in a state). A **sample** is the subset we actually observe. A **statistic** computed from the sample estimates the population **parameter**.",
+          "Samples only support reliable inference if units are selected by a known random mechanism. In **simple random sampling (SRS)** every unit has the same chance of selection. In **stratified sampling** the population is divided into strata (e.g. rural/urban) and a random sample is drawn in each, which improves precision and guarantees coverage of every stratum.",
+          "When units have unequal selection probabilities, each sampled unit carries a **sampling weight** equal to 1 / (probability of selection) - the number of population units it represents."
+        ]},
+        {"id": "stat101-3", "title": "How precise is an estimate?", "minutes": 100, "body": [
+          "Different random samples give slightly different estimates. The **standard error (SE)** measures that sample-to-sample variation. For a sample mean under SRS, SE = SD / sqrt(n).",
+          "Quadrupling the sample size halves the standard error - precision grows with the square root of n, not with n.",
+          "A 95% **confidence interval** is approximately estimate +/- 1.96 x SE. It is a statement about the method: intervals built this way capture the true parameter in about 95% of repeated samples."
+        ]}
+      ],
+      "quiz": {
+        "pass_threshold": 0.7,
+        "questions": [
+          {"id": "q1", "competency": "desc_stats", "lesson": "stat101-1", "text": "Monthly household incomes are strongly right-skewed. Which summary best describes a typical household?",
+           "options": ["Mean", "Median", "Range", "Maximum"], "answer": 1,
+           "explanation": "The median is not pulled up by a few very large incomes."},
+          {"id": "q2", "competency": "desc_stats", "lesson": "stat101-1", "text": "What is the mean of 2, 4, 4, 4, 5, 5, 7, 9?",
+           "options": ["4", "4.5", "5", "5.5"], "answer": 2,
+           "explanation": "The sum is 40 over 8 values, so the mean is 5."},
+          {"id": "q3", "competency": "desc_stats", "lesson": "stat101-1", "text": "Which measure of spread is least affected by outliers?",
+           "options": ["Range", "Variance", "Interquartile range", "Standard deviation"], "answer": 2,
+           "explanation": "The IQR only uses the middle 50% of the data."},
+          {"id": "q4", "competency": "sampling", "lesson": "stat101-2", "text": "A household selected with probability 1/250 has a sampling weight of:",
+           "options": ["0.004", "1", "250", "It depends on the household size"], "answer": 2,
+           "explanation": "The weight is the inverse of the selection probability: it represents 250 households."},
+          {"id": "q5", "competency": "sampling", "lesson": "stat101-2", "text": "What is the main advantage of stratifying by rural/urban before sampling?",
+           "options": ["It removes the need for weights", "It guarantees coverage of both groups and usually improves precision", "It makes the sample non-random", "It always reduces cost"], "answer": 1,
+           "explanation": "Stratification ensures each stratum is represented and typically lowers the standard error."},
+          {"id": "q6", "competency": "infer_stats", "lesson": "stat101-3", "text": "If the sample size is multiplied by 4 (SRS), the standard error of the mean:",
+           "options": ["Is divided by 4", "Is halved", "Stays the same", "Doubles"], "answer": 1,
+           "explanation": "SE = SD / sqrt(n); sqrt(4) = 2, so the SE halves."}
+        ]
+      }
+    },
+
+    {
+      "id": "SQL101",
+      "title": "SQL and Data Management",
+      "summary": "Query, join and aggregate administrative and survey tables with SQL.",
+      "difficulty": "beginner",
+      "duration_minutes": 240,
+      "duration_verified": true,
+      "source": "local",
+      "availability": "available",
+      "outcomes": [
+        "Filter and sort rows with SELECT ... WHERE ... ORDER BY",
+        "Aggregate with GROUP BY and filter groups with HAVING",
+        "Combine tables with INNER and LEFT JOINs"
+      ],
+      "develops": {"sql": 65},
+      "prerequisites": [],
+      "lessons": [
+        {"id": "sql101-1", "title": "Selecting and filtering", "minutes": 80, "body": [
+          "A relational table stores one kind of record per row, with typed columns. `SELECT` chooses columns, `WHERE` filters rows and `ORDER BY` sorts:",
+          {"code": ["SELECT district, households", "FROM village_census", "WHERE state = 'Bihar' AND households > 500", "ORDER BY households DESC;"]},
+          "`WHERE` is applied before any grouping, row by row. Text values go in single quotes. Use `IS NULL`, not `= NULL`, to find missing values."
+        ]},
+        {"id": "sql101-2", "title": "Aggregation", "minutes": 80, "body": [
+          "Aggregate functions - `COUNT`, `SUM`, `AVG`, `MIN`, `MAX` - collapse many rows into one. `GROUP BY` produces one output row per group:",
+          {"code": ["SELECT state, COUNT(*) AS villages, SUM(households) AS hh", "FROM village_census", "GROUP BY state", "HAVING SUM(households) > 100000;"]},
+          "`HAVING` filters **groups** after aggregation, whereas `WHERE` filters **rows** before it. `COUNT(*)` counts rows; `COUNT(column)` skips NULLs."
+        ]},
+        {"id": "sql101-3", "title": "Joining tables", "minutes": 80, "body": [
+          "Data are normalised into several tables linked by keys. A **join** re-combines them:",
+          "- `INNER JOIN` keeps only rows with a match in both tables.",
+          "- `LEFT JOIN` keeps every row from the left table and fills unmatched right-hand columns with NULL - useful for finding records that are missing in another source.",
+          {"code": ["SELECT d.district_name, s.sample_hh", "FROM districts d", "LEFT JOIN survey_allocation s ON s.district_code = d.district_code;"]},
+          "Always check row counts before and after a join; an unexpected increase usually means the join key is not unique."
+        ]}
+      ],
+      "quiz": {
+        "pass_threshold": 0.7,
+        "questions": [
+          {"id": "q1", "competency": "sql", "lesson": "sql101-1", "text": "Which clause filters individual rows before any grouping?",
+           "options": ["HAVING", "WHERE", "ORDER BY", "GROUP BY"], "answer": 1,
+           "explanation": "WHERE filters rows; HAVING filters groups after aggregation."},
+          {"id": "q2", "competency": "sql", "lesson": "sql101-1", "text": "How do you find rows where `pincode` is missing?",
+           "options": ["WHERE pincode = NULL", "WHERE pincode IS NULL", "WHERE pincode = ''", "WHERE NOT pincode"], "answer": 1,
+           "explanation": "NULL is never equal to anything; use IS NULL."},
+          {"id": "q3", "competency": "sql", "lesson": "sql101-2", "text": "You need states whose total households exceed 100,000. Where does that condition go?",
+           "options": ["WHERE", "HAVING", "SELECT", "ORDER BY"], "answer": 1,
+           "explanation": "The condition is on an aggregate, so it belongs in HAVING."},
+          {"id": "q4", "competency": "sql", "lesson": "sql101-3", "text": "Which join keeps every district even if it has no survey allocation?",
+           "options": ["INNER JOIN", "LEFT JOIN from districts", "CROSS JOIN", "A WHERE clause"], "answer": 1,
+           "explanation": "A LEFT JOIN keeps all rows of the left table and fills gaps with NULL."},
+          {"id": "q5", "competency": "sql", "lesson": "sql101-3", "text": "After a join the row count unexpectedly doubles. The most likely cause is:",
+           "options": ["The join key is not unique in one table", "The tables use different fonts", "ORDER BY was missing", "COUNT(*) was used"], "answer": 0,
+           "explanation": "Duplicate keys multiply matching rows."}
+        ]
+      }
+    },
+
+    {
+      "id": "PY201",
+      "title": "Python for Statistical Computing",
+      "summary": "Use pandas and SciPy to clean survey data, compute weighted estimates and run basic tests.",
+      "difficulty": "intermediate",
+      "duration_minutes": 360,
+      "duration_verified": true,
+      "source": "local",
+      "availability": "available",
+      "outcomes": [
+        "Load, clean and reshape survey tables with pandas",
+        "Compute grouped and weighted estimates",
+        "Run and interpret a two-sample t-test with SciPy"
+      ],
+      "develops": {"py_stats": 70, "infer_stats": 55},
+      "prerequisites": [
+        {"competency": "py_basics", "min_level": 50},
+        {"competency": "desc_stats", "min_level": 40}
+      ],
+      "lessons": [
+        {"id": "py201-1", "title": "DataFrames and cleaning", "minutes": 120, "body": [
+          "A pandas **DataFrame** is a table with labelled columns. Most work follows load -> inspect -> clean:",
+          {"code": ["import pandas as pd", "df = pd.read_csv(\"plfs_extract.csv\")", "df.info()                       # types and missing counts", "df = df.dropna(subset=[\"age\"])  # drop rows missing age", "df[\"age\"] = df[\"age\"].astype(int)"]},
+          "Select columns with `df[[\"a\", \"b\"]]`, filter rows with a boolean mask such as `df[df[\"sector\"] == \"Rural\"]`. `.loc[rows, cols]` selects by label.",
+          "Prefer explicit cleaning steps you can re-run over manual edits in a spreadsheet: the script becomes documentation of what was done."
+        ]},
+        {"id": "py201-2", "title": "Grouped and weighted estimates", "minutes": 120, "body": [
+          "`groupby` splits the table, applies a function to each group and combines the results:",
+          {"code": ["df.groupby(\"state\")[\"consumption\"].mean()"]},
+          "Survey records carry weights, so an unweighted mean describes the **sample**, not the population. A weighted mean is sum(w * x) / sum(w):",
+          {"code": ["import numpy as np", "np.average(df[\"consumption\"], weights=df[\"weight\"])"]},
+          "Always state whether a published figure is weighted - the two can differ substantially when some strata were over-sampled."
+        ]},
+        {"id": "py201-3", "title": "Testing a difference", "minutes": 120, "body": [
+          "To ask whether two groups differ beyond sampling noise, use a two-sample t-test. **Welch's** version does not assume equal variances and is the safer default:",
+          {"code": ["from scipy import stats", "t, p = stats.ttest_ind(rural, urban, equal_var=False)"]},
+          "The **p-value** is the probability of a difference at least this large *if there were truly no difference*. A small p (e.g. < 0.05) is evidence against 'no difference'; it is not the probability that the null hypothesis is true, and it says nothing about whether the difference is large enough to matter."
+        ]}
+      ],
+      "quiz": {
+        "pass_threshold": 0.7,
+        "questions": [
+          {"id": "q1", "competency": "py_stats", "lesson": "py201-1", "text": "Which pandas call shows column types and non-null counts?",
+           "options": ["df.head()", "df.info()", "df.shape", "df.sum()"], "answer": 1,
+           "explanation": "df.info() lists dtypes and non-null counts per column."},
+          {"id": "q2", "competency": "py_stats", "lesson": "py201-1", "text": "How do you keep only rural rows?",
+           "options": ["df.filter(\"Rural\")", "df[df[\"sector\"] == \"Rural\"]", "df.groupby(\"Rural\")", "df.drop(\"Rural\")"], "answer": 1,
+           "explanation": "A boolean mask inside [] keeps the rows where the condition is True."},
+          {"id": "q3", "competency": "py_stats", "lesson": "py201-2", "text": "Values 10 and 20 have weights 3 and 1. What is the weighted mean?",
+           "options": ["12.5", "15", "17.5", "30"], "answer": 0,
+           "explanation": "(3x10 + 1x20) / (3 + 1) = 50 / 4 = 12.5."},
+          {"id": "q4", "competency": "py_stats", "lesson": "py201-2", "text": "Why can an unweighted survey mean mislead?",
+           "options": ["It is slower to compute", "It describes the sample, not the population, when selection probabilities differ", "pandas cannot compute it", "It always overstates the mean"], "answer": 1,
+           "explanation": "Over-sampled groups get too much influence unless weights are applied."},
+          {"id": "q5", "competency": "infer_stats", "lesson": "py201-3", "text": "A t-test gives p = 0.01. Which statement is correct?",
+           "options": ["There is a 1% chance the null hypothesis is true", "A difference this large would be rare if there were truly no difference", "The difference is large and important", "The test is invalid"], "answer": 1,
+           "explanation": "The p-value is computed assuming the null is true; it is not the probability of the null."},
+          {"id": "q6", "competency": "infer_stats", "lesson": "py201-3", "text": "Why is Welch's t-test a safer default?",
+           "options": ["It needs no data", "It does not assume equal variances", "It always gives smaller p-values", "It works only for large samples"], "answer": 1,
+           "explanation": "Welch's test remains valid when the two groups have different variances."}
+        ]
+      }
+    },
+
+    {
+      "id": "VIZ201",
+      "title": "Data Visualization for Official Statistics",
+      "summary": "Design honest, readable charts for statistical releases and dashboards.",
+      "difficulty": "intermediate",
+      "duration_minutes": 240,
+      "duration_verified": true,
+      "source": "local",
+      "availability": "available",
+      "outcomes": [
+        "Match chart types to the comparison being made",
+        "Avoid common distortions such as truncated bar axes",
+        "Design accessible colour and labelling for public releases"
+      ],
+      "develops": {"dataviz": 70},
+      "prerequisites": [
+        {"competency": "desc_stats", "min_level": 40}
+      ],
+      "lessons": [
+        {"id": "viz201-1", "title": "Choosing the right chart", "minutes": 80, "body": [
+          "Start from the question, not the chart gallery:",
+          "- **Change over time** -> line chart (time on the horizontal axis).",
+          "- **Comparing categories** -> bar chart, sorted by value unless the categories have a natural order.",
+          "- **Distribution of one variable** -> histogram or box plot.",
+          "- **Relationship between two numeric variables** -> scatter plot.",
+          "Pie charts only work for a few parts of one whole; people compare lengths far more accurately than angles."
+        ]},
+        {"id": "viz201-2", "title": "Honest scales", "minutes": 80, "body": [
+          "Bar length encodes value, so a bar chart's axis **must start at zero** - truncating it exaggerates differences. Line charts show change and may use a zoomed axis, clearly labelled.",
+          "Use the same scale when panels are meant to be compared. Show uncertainty (confidence intervals) where estimates come from samples, so readers do not over-interpret small differences."
+        ]},
+        {"id": "viz201-3", "title": "Accessible design", "minutes": 80, "body": [
+          "About 1 in 12 men has some colour-vision deficiency. Do not rely on red vs green alone; add labels, patterns or position.",
+          "Label lines directly instead of forcing readers to a legend, keep text horizontal, and write a title that states the finding (\"Rural unemployment fell in 2024\") rather than the variable names."
+        ]}
+      ],
+      "quiz": {
+        "pass_threshold": 0.7,
+        "questions": [
+          {"id": "q1", "competency": "dataviz", "lesson": "viz201-1", "text": "Best chart for monthly CPI inflation over three years?",
+           "options": ["Pie chart", "Line chart", "Scatter plot", "Histogram"], "answer": 1,
+           "explanation": "Change over time is shown most clearly with a line chart."},
+          {"id": "q2", "competency": "dataviz", "lesson": "viz201-1", "text": "To compare literacy rates across 30 districts you should use:",
+           "options": ["A sorted bar chart", "A pie chart", "A 3-D cone chart", "A line chart"], "answer": 0,
+           "explanation": "A sorted bar chart makes category comparison easy."},
+          {"id": "q3", "competency": "dataviz", "lesson": "viz201-2", "text": "A bar chart's y-axis starts at 90%. What is the problem?",
+           "options": ["None", "It exaggerates differences because bar length no longer encodes value", "It hides the title", "It is not accessible"], "answer": 1,
+           "explanation": "Bars must start at zero or their lengths misrepresent the values."},
+          {"id": "q4", "competency": "dataviz", "lesson": "viz201-3", "text": "Which practice improves accessibility for colour-blind readers?",
+           "options": ["Using only red and green", "Adding direct labels in addition to colour", "Removing all colour", "Using more 3-D effects"], "answer": 1,
+           "explanation": "Direct labels carry the meaning without relying on colour."},
+          {"id": "q5", "competency": "dataviz", "lesson": "viz201-3", "text": "Which chart title is most useful in a public release?",
+           "options": ["'PLFS_UR_Q3'", "'Unemployment rate'", "'Urban unemployment fell for the third straight quarter'", "'Chart 4'"], "answer": 2,
+           "explanation": "A title that states the finding tells the reader what to take away."}
+        ]
+      }
+    },
+
+    {
+      "id": "SRV201",
+      "title": "Survey Design and Data Quality",
+      "summary": "Plan survey samples, write clear questionnaires and control data quality in the field.",
+      "difficulty": "intermediate",
+      "duration_minutes": 300,
+      "duration_verified": true,
+      "source": "local",
+      "availability": "available",
+      "outcomes": [
+        "Choose between stratified, cluster and multi-stage designs",
+        "Write unambiguous questionnaire items",
+        "Detect and reduce non-response and measurement error"
+      ],
+      "develops": {"survey_dq": 65, "sampling": 70},
+      "prerequisites": [
+        {"competency": "sampling", "min_level": 40}
+      ],
+      "lessons": [
+        {"id": "srv201-1", "title": "Multi-stage and cluster designs", "minutes": 100, "body": [
+          "Large household surveys rarely list every household in the country. Instead they use **multi-stage** designs: first select villages or urban blocks (first-stage units), then list and sample households within them.",
+          "Sampling whole clusters cuts travel cost but households in the same village tend to be similar, so each additional household adds less information. This loss is measured by the **design effect**: the ratio of the actual variance to the variance a simple random sample of the same size would give.",
+          "Stratification usually lowers variance (design effect below 1); clustering usually raises it (above 1)."
+        ]},
+        {"id": "srv201-2", "title": "Questionnaire design", "minutes": 100, "body": [
+          "Each question should measure one thing, with a clear reference period and exhaustive, mutually exclusive answer codes.",
+          "- Avoid **double-barrelled** questions (\"Are you satisfied with the wage and working hours?\").",
+          "- Avoid **leading** wording (\"Don't you agree that...\").",
+          "- Specify the **reference period** (\"in the last 7 days\").",
+          "Pre-test the questionnaire with a small pilot and revise items that respondents misunderstand."
+        ]},
+        {"id": "srv201-3", "title": "Non-response and quality checks", "minutes": 100, "body": [
+          "**Unit non-response** (a household refuses) biases estimates when non-respondents differ from respondents. It is addressed through revisits, substitution rules defined in advance, and weight adjustments.",
+          "**Item non-response** (one question is skipped) is handled with imputation rules that are documented.",
+          "Build validation into data capture: range checks (age 0-120), consistency checks (a 6-year-old cannot be married), and skip-pattern checks. Monitor per-enumerator statistics to detect curbstoning (fabricated interviews)."
+        ]}
+      ],
+      "quiz": {
+        "pass_threshold": 0.7,
+        "questions": [
+          {"id": "q1", "competency": "sampling", "lesson": "srv201-1", "text": "Why do national household surveys use multi-stage cluster designs?",
+           "options": ["They are always more precise than SRS", "A full household list is unavailable and fieldwork cost must be controlled", "They remove the need for weights", "They avoid non-response"], "answer": 1,
+           "explanation": "Clusters make listing and travel feasible at the cost of some precision."},
+          {"id": "q2", "competency": "sampling", "lesson": "srv201-1", "text": "A design effect of 2.0 means the design's variance is:",
+           "options": ["Half that of SRS", "Equal to SRS", "Twice that of SRS of the same size", "Not comparable"], "answer": 2,
+           "explanation": "Design effect = actual variance / SRS variance."},
+          {"id": "q3", "competency": "survey_dq", "lesson": "srv201-2", "text": "\"Are you satisfied with your wage and working hours?\" is an example of:",
+           "options": ["A leading question", "A double-barrelled question", "A well-designed item", "An open question"], "answer": 1,
+           "explanation": "It asks about two things, so an answer cannot be interpreted."},
+          {"id": "q4", "competency": "survey_dq", "lesson": "srv201-2", "text": "Which element makes a labour-force question unambiguous?",
+           "options": ["A clear reference period such as 'last 7 days'", "Longer wording", "Asking it twice", "A leading phrase"], "answer": 0,
+           "explanation": "Without a reference period respondents answer for different time spans."},
+          {"id": "q5", "competency": "survey_dq", "lesson": "srv201-3", "text": "Which check would catch a record showing a 6-year-old as married?",
+           "options": ["Range check", "Consistency check", "Skip check", "Weight check"], "answer": 1,
+           "explanation": "Consistency checks compare related fields."},
+          {"id": "q6", "competency": "survey_dq", "lesson": "srv201-3", "text": "Unit non-response causes bias mainly when:",
+           "options": ["The sample is large", "Non-respondents differ from respondents on what is measured", "Weights are used", "Questions are closed-ended"], "answer": 1,
+           "explanation": "Bias arises when those who do not respond are systematically different."}
+        ]
+      }
+    },
+
+    {
+      "id": "LAB301",
+      "title": "Applied Statistical Data Analysis Lab",
+      "summary": "A hands-on lab: produce weighted estimates and a significance test from a survey extract, then interpret them.",
+      "difficulty": "advanced",
+      "duration_minutes": 360,
+      "duration_verified": true,
+      "source": "local",
+      "availability": "available",
+      "outcomes": [
+        "Compute a weighted population estimate from sampled records",
+        "Quantify uncertainty with a standard error",
+        "Test and interpret a difference between two regions"
+      ],
+      "develops": {"applied_analysis": 75, "infer_stats": 75, "py_stats": 75},
+      "prerequisites": [
+        {"competency": "py_stats", "min_level": 55},
+        {"competency": "infer_stats", "min_level": 45},
+        {"competency": "sql", "min_level": 40}
+      ],
+      "lessons": [
+        {"id": "lab301-1", "title": "Planning an analysis", "minutes": 90, "body": [
+          "Every analysis should start with a written plan: the question, the population, the estimator, and how uncertainty will be reported. Decide these **before** looking at results to avoid choosing the method that gives the answer you hoped for.",
+          "For survey data the plan must say which weight variable is used and whether the estimate is for households or persons."
+        ]},
+        {"id": "lab301-2", "title": "Estimation and uncertainty", "minutes": 135, "body": [
+          "Population estimate: the weighted mean sum(w*x)/sum(w). Report it with a standard error. For a simple random sample from one group, the SE of the mean is s / sqrt(n), where s is the sample standard deviation (dividing by n - 1).",
+          "When comparing two groups, compute the difference of means and its SE: sqrt(s1^2/n1 + s2^2/n2). Welch's t statistic is the difference divided by that SE.",
+          "A |t| value above roughly 2 (for moderate samples) indicates a difference unlikely to be due to sampling noise alone."
+        ]},
+        {"id": "lab301-3", "title": "Writing up the result", "minutes": 135, "body": [
+          "A good write-up gives the estimate, its uncertainty, the comparison, and a plain-language conclusion with its limits: \"Mean monthly consumption in Region A was Rs X (SE Y), about Z higher than Region B; the difference is statistically significant, but the sample is small and unweighted for the comparison.\"",
+          "Never report more decimals than the data support, and always name the data source and reference period."
+        ]}
+      ],
+      "quiz": {
+        "pass_threshold": 0.7,
+        "questions": [
+          {"id": "q1", "competency": "infer_stats", "lesson": "lab301-2", "text": "The SE of a difference between two independent means is:",
+           "options": ["s1 + s2", "sqrt(s1^2/n1 + s2^2/n2)", "(s1 - s2) / 2", "s1 * s2"], "answer": 1,
+           "explanation": "Variances of independent estimates add; take the square root for the SE."},
+          {"id": "q2", "competency": "infer_stats", "lesson": "lab301-2", "text": "Welch's t = 3.4 for a moderate sample. The most reasonable reading is:",
+           "options": ["No evidence of a difference", "A difference unlikely to be due to sampling noise alone", "The difference is 3.4 rupees", "The test failed"], "answer": 1,
+           "explanation": "|t| well above 2 indicates the difference is large relative to its SE."},
+          {"id": "q3", "competency": "py_stats", "lesson": "lab301-2", "text": "For the SE of a sample mean you should compute the sample SD with divisor:",
+           "options": ["n", "n - 1", "n + 1", "sqrt(n)"], "answer": 1,
+           "explanation": "The sample SD uses n - 1 (Bessel's correction). In pandas this is the default for .std()."},
+          {"id": "q4", "competency": "py_stats", "lesson": "lab301-1", "text": "Why write the analysis plan before looking at results?",
+           "options": ["It is faster", "To avoid choosing methods that produce a preferred answer", "Because software requires it", "To avoid using weights"], "answer": 1,
+           "explanation": "Pre-specifying the method protects against analyst bias."},
+          {"id": "q5", "competency": "infer_stats", "lesson": "lab301-3", "text": "Which write-up is best?",
+           "options": ["'Region A is richer.'", "'p < 0.05.'", "'Mean consumption in A was Rs 4,150 (SE 140), Rs 950 higher than B; significant, small sample.'", "'See attached table.'"], "answer": 2,
+           "explanation": "It reports the estimate, uncertainty, comparison and limitations."}
+        ]
+      },
+      "lab": {
+        "id": "lab301-lab",
+        "title": "Household consumption: Region A vs Region B",
+        "develops": {"applied_analysis": 75},
+        "instructions": [
+          "The table below is a small extract of 12 sampled households (demonstration data) with their region, sampling weight and monthly per-capita consumption in rupees.",
+          "Compute the three quantities below. You may use Python, a spreadsheet or a calculator. Numeric answers are checked automatically against the dataset with a small tolerance.",
+          "Finally, write two or three sentences interpreting the result for a non-technical reader."
+        ],
+        "dataset": {
+          "columns": ["hh_id", "region", "weight", "consumption"],
+          "rows": [
+            [1, "A", 120, 4200], [2, "A", 80, 3900], [3, "A", 150, 4600], [4, "A", 100, 4100],
+            [5, "A", 90, 3800], [6, "A", 110, 4300], [7, "B", 200, 3100], [8, "B", 180, 3400],
+            [9, "B", 160, 2900], [10, "B", 220, 3300], [11, "B", 140, 3000], [12, "B", 190, 3200]
+          ]
+        },
+        "tasks": [
+          {"id": "weighted_mean", "label": "Weighted mean monthly consumption across all 12 households (Rs)", "tolerance": 1.0},
+          {"id": "se_region_a", "label": "Standard error of the (unweighted) mean for Region A, using the sample SD with n - 1 (Rs)", "tolerance": 1.0},
+          {"id": "welch_t", "label": "Welch's t statistic for (mean of A - mean of B), unweighted", "tolerance": 0.05}
+        ],
+        "min_interpretation_chars": 60
+      }
+    }
+  ],
+
+  "external_listings": [
+    {
+      "id": "IGOT-MOCK-DISSEM",
+      "title": "Dissemination of Official Statistics (iGOT reference - mock)",
+      "summary": "Placeholder listing returned by the MOCK iGOT connector. No live iGOT connection exists in this prototype, so availability and duration are unverified.",
+      "difficulty": "intermediate",
+      "duration_minutes": null,
+      "duration_verified": false,
+      "source": "igot_mock",
+      "availability": "unavailable",
+      "outcomes": ["Apply metadata standards (e.g. SDMX) to statistical releases", "Plan a release calendar"],
+      "develops": {"dissem": 60},
+      "prerequisites": [{"competency": "desc_stats", "min_level": 40}]
+    }
+  ],
+
+  "goals": [
+    {
+      "id": "stat_data_analyst",
+      "title": "Statistical Data Analyst",
+      "tagline": "Turn survey and administrative data into reliable estimates.",
+      "description": "Prepares datasets, produces descriptive and inferential estimates, and supports statistical releases.",
+      "icon": "analyst",
+      "requirements": [
+        {"competency": "py_stats", "target": 65, "weight": 3},
+        {"competency": "desc_stats", "target": 60, "weight": 3},
+        {"competency": "sql", "target": 60, "weight": 2},
+        {"competency": "infer_stats", "target": 50, "weight": 2},
+        {"competency": "dataviz", "target": 50, "weight": 1}
+      ],
+      "entry_prerequisites": []
+    },
+    {
+      "id": "dataviz_specialist",
+      "title": "Data Visualization Specialist",
+      "tagline": "Communicate official statistics clearly and honestly.",
+      "description": "Designs charts, dashboards and release graphics for statistical products.",
+      "icon": "viz",
+      "requirements": [
+        {"competency": "dataviz", "target": 65, "weight": 3},
+        {"competency": "desc_stats", "target": 50, "weight": 2},
+        {"competency": "sql", "target": 50, "weight": 2},
+        {"competency": "dissem", "target": 50, "weight": 1}
+      ],
+      "entry_prerequisites": []
+    },
+    {
+      "id": "survey_sampling",
+      "title": "Survey and Sampling Fundamentals",
+      "tagline": "Design samples and protect data quality in the field.",
+      "description": "Supports survey planning, questionnaire review and field quality control.",
+      "icon": "survey",
+      "requirements": [
+        {"competency": "sampling", "target": 65, "weight": 3},
+        {"competency": "survey_dq", "target": 60, "weight": 3},
+        {"competency": "desc_stats", "target": 50, "weight": 2}
+      ],
+      "entry_prerequisites": []
+    },
+    {
+      "id": "applied_analysis",
+      "title": "Applied Statistical Data Analysis",
+      "tagline": "Carry an analysis from raw extract to defensible conclusion.",
+      "description": "Plans and executes end-to-end analyses with weighting, testing and a written interpretation.",
+      "icon": "applied",
+      "requirements": [
+        {"competency": "applied_analysis", "target": 70, "weight": 3},
+        {"competency": "infer_stats", "target": 70, "weight": 3},
+        {"competency": "py_stats", "target": 70, "weight": 2},
+        {"competency": "sql", "target": 50, "weight": 1}
+      ],
+      "entry_prerequisites": [
+        {"competency": "desc_stats", "min_level": 40, "note": "Comfort with basic descriptive statistics is expected; the roadmap adds a foundation course if needed."}
+      ]
+    }
+  ],
+
+  "demo_learners": [
+    {
+      "username": "demo_asha",
+      "password": "demo1234",
+      "display_name": "Asha Verma (demo)",
+      "experience_years": 6,
+      "education": "B.Tech Computer Science",
+      "interests": "Automating statistical workflows",
+      "evidence": [
+        {"competency": "py_basics", "source": "assessment", "level": 80, "note": "Seeded demo evidence: prior Python assessment (demonstration data)"},
+        {"competency": "py_basics", "source": "self_reported", "level": 85},
+        {"competency": "py_stats", "source": "self_reported", "level": 45},
+        {"competency": "sql", "source": "self_reported", "level": 55},
+        {"competency": "desc_stats", "source": "self_reported", "level": 45},
+        {"competency": "infer_stats", "source": "self_reported", "level": 30},
+        {"competency": "dataviz", "source": "self_reported", "level": 40}
+      ]
+    },
+    {
+      "username": "demo_ravi",
+      "password": "demo1234",
+      "display_name": "Ravi Kumar (demo)",
+      "experience_years": 3,
+      "education": "B.A. Economics",
+      "interests": "Moving into data analysis",
+      "evidence": [
+        {"competency": "py_basics", "source": "self_reported", "level": 10},
+        {"competency": "desc_stats", "source": "self_reported", "level": 25},
+        {"competency": "sql", "source": "self_reported", "level": 20},
+        {"competency": "dataviz", "source": "self_reported", "level": 20}
+      ]
+    }
+  ]
+}

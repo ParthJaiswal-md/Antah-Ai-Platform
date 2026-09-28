@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}{{ c.title }} · Antah.ai{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% set pr = c.progress %}
+{% set done = pr.lessons_done or [] %}
+{% set rq = ('?roadmap=' ~ from_roadmap) if from_roadmap else '' %}
+{% block content %}
+<div class="pw-head" style="padding-bottom:0">
+  <div>
+    <div class="eyebrow">{% if from_roadmap %}<a href="{{ url_for('pathways.roadmap_page', roadmap_id=from_roadmap) }}">← Back to roadmap</a>{% else %}<a href="{{ url_for('pathways.dashboard') }}">← Dashboard</a>{% endif %}</div>
+    <h1>{{ c.title }}</h1>
+    <div class="row" style="margin-top:.5rem">
+      <span class="chip">{{ c.difficulty|title }}</span>
+      <span class="chip">{{ c.duration_minutes|minutes if c.duration_verified else 'Duration not verified' }}</span>
+      <span class="chip {{ 'brand' if c.source == 'local' else 'bad' }}">{{ 'Curated · demonstration content' if c.source == 'local' else 'iGOT connector · MOCK' }}</span>
+      {% if pr.status == 'completed' %}<span class="chip ok">Completed</span>{% elif pr.status == 'in_progress' %}<span class="chip brand">In progress · {{ pr.percent }}%</span>{% endif %}
+    </div>
+  </div>
+</div>
+
+{% if c.availability != 'available' %}
+  <div class="pw-card" style="margin-top:1.5rem">
+    <h3>Content unavailable</h3>
+    <p class="muted" style="margin-top:.4rem">This listing comes from the <b>mock iGOT connector</b>. There is no live iGOT connection in this prototype, so no content, duration or availability can be confirmed. It stays on roadmaps so the gap it would close is visible.</p>
+  </div>
+{% else %}
+<div class="player">
+  <aside class="player-side pw-card" style="padding:1rem">
+    <div class="mini-title" style="padding:0 .5rem">Your progress</div>
+    <div class="progress {{ 'done' if pr.status == 'completed' }}" style="margin:0 .5rem .8rem"><span style="width:{{ pr.percent or 0 }}%"></span></div>
+    {% for l in c.lessons %}
+      <a class="step {{ 'current' if lesson and l.id == lesson.id }}" href="{{ url_for('pathways.course_page', course_id=c.id, lesson=l.id, roadmap=from_roadmap) }}">
+        <span class="step-ico {{ 'done' if l.id in done }}">{% if l.id in done %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.2 4.2L19 7"/></svg>{% else %}<span class="xs">{{ loop.index }}</span>{% endif %}</span>
+        <span>{{ l.title }}<br><span class="xs muted">{{ l.minutes }} min</span></span>
+      </a>
+    {% endfor %}
+    <hr class="divider" style="margin:.6rem 0">
+    {% set can_quiz = not (c.locked and pr.status == 'not_started') %}
+    <a class="step {{ '' if can_quiz else 'disabled' }}" href="{{ url_for('pathways.assessment_page', course_id=c.id) }}{{ rq }}">
+      <span class="step-ico {{ 'done' if pr.quiz_passed }}">{% if pr.quiz_passed %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.2 4.2L19 7"/></svg>{% else %}?{% endif %}</span>
+      <span>Assessment<br><span class="xs muted">{% if pr.best_score is defined and pr.best_score is not none %}Best {{ pr.best_score }}% · {% endif %}pass 70%</span></span>
+    </a>
+    {% if c.lab %}
+    <a class="step {{ '' if pr.quiz_passed else 'disabled' }}" href="{{ url_for('pathways.lab_page', course_id=c.id) }}{{ rq }}">
+      <span class="step-ico {{ 'done' if pr.lab_passed }}">{% if pr.lab_passed %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.2 4.2L19 7"/></svg>{% else %}L{% endif %}</span>
+      <span>Practical lab<br><span class="xs muted">{{ 'Unlocks after assessment' if not pr.quiz_passed else c.lab.title }}</span></span>
+    </a>
+    {% endif %}
+    <hr class="divider" style="margin:.6rem 0">
+    <div class="mini-title" style="padding:0 .5rem">Develops</div>
+    {% for d in c.develops_named %}
+      <div class="dev-row" style="padding:0 .5rem"><span class="small">{{ d.name }}</span><span class="xs muted">{{ d.current }} → up to {{ d.reaches }}</span>
+        <div class="bar thin"><span class="fill {{ d.basis }}" style="width:{{ d.current }}%"></span>{% if d.reaches > d.current %}<span class="gapfill" style="left:{{ d.current }}%;width:{{ d.reaches - d.current }}%"></span>{% endif %}</div></div>
+    {% endfor %}
+  </aside>
+
+  <section>
+    {% if c.locked and pr.status == 'not_started' %}
+      <div class="form-error"><b>Locked.</b> You can preview the lessons, but you need
+        {% for p in c.prereq_status if not p.satisfied %}<b>{{ p.name }} ≥ {{ p.min_level }}</b> (you: {{ p.current }}){{ ', ' if not loop.last }}{% endfor %}
+        before starting or taking the assessment.</div>
+    {% endif %}
+    {% if lesson %}
+    <article class="pw-card lesson" style="padding:1.75rem 2rem">
+      <div class="eyebrow">Lesson {{ c.lessons.index(lesson) + 1 }} of {{ c.lessons|length }} · {{ lesson.minutes }} min</div>
+      <h2>{{ lesson.title }}</h2>
+      {{ lesson.body|lesson_html }}
+      <hr class="divider">
+      <div class="row between">
+        <span class="xs muted">Marking a lesson as read updates your progress only. Competency levels change only when you pass the assessment.</span>
+        {% if not (c.locked and pr.status == 'not_started') %}
+          <button class="btn btn-primary" id="markBtn" data-lesson="{{ lesson.id }}">{{ 'Next lesson →' if lesson.id in done else 'Mark as read & continue →' }}</button>
+        {% endif %}
+      </div>
+    </article>
+    {% endif %}
+    <p class="xs muted" style="margin-top:.8rem">Demonstration learning content written for the AntahAI prototype. It is not an official iGOT course.</p>
+  </section>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var btn = document.getElementById('markBtn'); if (!btn) return;
+  var rid = {{ (from_roadmap or '')|tojson }};
+  btn.addEventListener('click', function () {
+    btn.disabled = true;
+    PW.api('POST', '/api/pathways/courses/{{ c.id }}/lessons/' + btn.dataset.lesson + '/complete', {})
+      .then(function (d) { window.location.href = d.next + (rid ? (d.next.indexOf('?') >= 0 ? '&' : '?') + 'roadmap=' + rid : ''); })
+      .catch(function (e) { PW.toast(e.message, true); btn.disabled = false; });
+  });
+})();
+</script>
+{% endblock %}

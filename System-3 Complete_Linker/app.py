@@ -54,7 +54,31 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("ANTAHAI_SECRET", secrets.token_hex(24))
+
+
+def _secret_key() -> str:
+    """ANTAHAI_SECRET, else a key persisted next to the app so logins survive restarts."""
+    env = os.environ.get("ANTAHAI_SECRET")
+    if env:
+        return env
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".antahai_secret")
+    try:
+        with open(path, encoding="utf-8") as handle:
+            key = handle.read().strip()
+        if key:
+            return key
+    except OSError:
+        pass
+    key = secrets.token_hex(24)
+    try:
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(key)
+    except OSError:
+        pass
+    return key
+
+
+app.config["SECRET_KEY"] = _secret_key()
 app.config["JSON_SORT_KEYS"] = False
 
 RESULTS_LEAD = "On the basis of your current skill portfolio, here are your recommended courses."
@@ -131,14 +155,14 @@ def _json_body() -> dict | None:
 @app.route("/")
 def landing():
     if "user_id" in session:
-        return redirect(url_for("recommendation"))
+        return redirect(url_for("pathways.dashboard"))
     return render_template("landing.html")
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if "user_id" in session:
-        return redirect(url_for("recommendation"))
+        return redirect(url_for("pathways.dashboard"))
 
     if request.method == "POST":
         body = _json_body() or request.form
@@ -149,7 +173,7 @@ def login():
             session.clear()
             session["user_id"] = user["id"]
             session["username"] = user["username"]
-            return jsonify({"ok": True, "redirect": url_for("recommendation")})
+            return jsonify({"ok": True, "redirect": url_for("pathways.dashboard")})
         return jsonify({"ok": False, "error": "Incorrect password. Please try again."}), 401
 
     return render_template("login.html")
@@ -544,6 +568,23 @@ def profile():
         submissions=submissions,
         skill_names=skill_names,
     )
+
+
+# ---------------------------------------------------------------------------
+# Learning Pathways (competency profile, goals, recommendations, roadmaps,
+# course player, assessments). Lives in ./pathways; shares auth + DB.
+# ---------------------------------------------------------------------------
+
+import pathways.web as pathways_web  # noqa: E402
+
+pathways_web.init_app(
+    app,
+    _hash_password,
+    dataset2_csv=os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "System-1 Recommandation_Engine", "datasets", "Dataset-2_Required_Competency.csv",
+    ),
+)
 
 
 # ---------------------------------------------------------------------------

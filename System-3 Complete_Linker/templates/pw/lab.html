@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Lab · {{ c.title }} · Antah.ai{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% set lab = c.lab %}
+{% set rid = request.args.get('roadmap') %}
+{% set pr = c.progress %}
+{% block content %}
+<div class="pw-head">
+  <div>
+    <div class="eyebrow"><a href="{{ url_for('pathways.course_page', course_id=c.id, roadmap=rid) }}">← {{ c.title }}</a></div>
+    <h1>Practical lab: {{ lab.title }}</h1>
+    <p>Numeric answers are checked automatically against values computed from the dataset. Completing the lab records validated evidence for Applied Statistical Analysis.</p>
+  </div>
+  {% if pr.lab_passed %}<span class="chip ok">Lab completed</span>{% endif %}
+</div>
+
+{% if not pr.quiz_passed %}
+  <div class="form-error">Pass the course assessment first. The lab unlocks after that.</div>
+  <a class="btn btn-primary" href="{{ url_for('pathways.assessment_page', course_id=c.id, roadmap=rid) }}">Take the assessment</a>
+{% else %}
+<div class="grid-side">
+  <div>
+    {% if outcome %}
+      <section class="pw-card result-hero {{ 'pass' if outcome.result.passed else 'fail' }}" style="margin-bottom:1.25rem">
+        <div class="ring" style="--p:{{ (outcome.result.tasks|selectattr('correct')|list|length / outcome.result.tasks|length * 100)|round|int }};--c:{{ 'var(--done)' if outcome.result.passed else 'var(--rec)' }}"><b>{{ outcome.result.tasks|selectattr('correct')|list|length }}/{{ outcome.result.tasks|length }}</b></div>
+        <div style="flex:1">
+          <h3>{{ 'Lab complete: course finished' if outcome.result.passed else 'Some answers need another look' }}</h3>
+          {% for ch in outcome.competency_changes %}<div class="small">{{ ch.name }}: <b>{{ ch.before }}</b> → <b style="color:var(--done)">{{ ch.after }}</b> (validated)</div>{% endfor %}
+          {% if not outcome.result.interpretation_ok %}<div class="small" style="color:var(--unav)">Add a fuller interpretation (at least {{ lab.min_interpretation_chars }} characters).</div>{% endif %}
+          {% if outcome.result.passed %}{% for rm in outcome.roadmaps %}<div class="xs muted">{{ rm.goal_title }} roadmap: readiness {{ rm.readiness_before }}% → {{ rm.readiness_after }}%</div>{% endfor %}{% endif %}
+        </div>
+        {% if rid %}<a class="btn btn-brand" href="{{ url_for('pathways.roadmap_page', roadmap_id=rid) }}">Back to roadmap</a>{% endif %}
+      </section>
+    {% endif %}
+    {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+
+    <section class="pw-card">
+      {% for p in lab.instructions %}<p class="small" style="margin-bottom:.6rem;color:var(--ink-2)">{{ p }}</p>{% endfor %}
+      <div class="table-scroll" style="margin-top:.6rem">
+        <table class="lab-table">
+          <thead><tr>{% for col in lab.dataset.columns %}<th>{{ col }}</th>{% endfor %}</tr></thead>
+          <tbody>{% for row in lab.dataset.rows %}<tr>{% for v in row %}<td>{{ v }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+        </table>
+      </div>
+      <p class="xs muted" style="margin-top:.4rem">Demonstration dataset (12 households). Weight = households represented. Consumption in ₹ per capita per month.</p>
+    </section>
+
+    <form class="pw-card pw-section" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% set res = {} %}
+      {% if outcome %}{% for t in outcome.result.tasks %}{% set _ = res.update({t.id: t}) %}{% endfor %}{% endif %}
+      {% for t in lab.tasks %}
+        <div class="field">
+          <label for="t_{{ t.id }}">{{ loop.index }}. {{ t.label }}</label>
+          <div class="row" style="flex-wrap:nowrap">
+            <input id="t_{{ t.id }}" name="{{ t.id }}" inputmode="decimal" value="{{ form.get(t.id, '') }}" required style="max-width:220px">
+            {% if res.get(t.id) %}{% if res[t.id].correct %}<span class="chip ok">Correct</span>{% else %}<span class="chip bad">Check again</span>{% endif %}{% endif %}
+          </div>
+          <div class="hint">Tolerance ±{{ t.tolerance }}</div>
+        </div>
+      {% endfor %}
+      <div class="field">
+        <label for="interp">4. Interpretation for a non-technical reader</label>
+        <textarea id="interp" name="interpretation" rows="4" required minlength="{{ lab.min_interpretation_chars }}" placeholder="What do the numbers say, and how confident should the reader be?">{{ form.get('interpretation', '') }}</textarea>
+      </div>
+      <button class="btn btn-primary" type="submit">{{ 'Resubmit' if submissions else 'Submit lab' }}</button>
+    </form>
+  </div>
+  <aside>
+    <div class="pw-card">
+      <div class="h2" style="font-size:1rem">Hints</div>
+      <ul class="reasons">
+        <li>Weighted mean = Σ(weight × consumption) ÷ Σ weight.</li>
+        <li>SE of a mean = sample SD (n − 1) ÷ √n.</li>
+        <li>Welch t = (mean A − mean B) ÷ √(s²A/nA + s²B/nB).</li>
+      </ul>
+      <a class="small" href="{{ url_for('pathways.course_page', course_id=c.id, lesson='lab301-2', roadmap=rid) }}">Revisit “Estimation and uncertainty”</a>
+    </div>
+    {% if submissions %}
+    <div class="pw-card pw-section">
+      <div class="h2" style="font-size:1rem">Your submissions</div>
+      {% for s in submissions|reverse %}<div class="change"><span style="flex:1" class="small">{{ s.created_at[:16]|replace('T', ' ') }}</span><span class="chip {{ 'ok' if s.passed else 'bad' }}">{{ 'Passed' if s.passed else 'Not passed' }}</span></div>{% endfor %}
+    </div>
+    {% endif %}
+  </aside>
+</div>
+{% endif %}
+{% endblock %}

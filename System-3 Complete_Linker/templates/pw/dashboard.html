@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard · Antah.ai{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% set BASIS = {'assessment': 'Validated', 'self_reported': 'Self-reported', 'none': 'No evidence'} %}
+{% block content %}
+{% set name = d.profile.display_name or current_user %}
+<section class="hero">
+  <div style="position:relative;z-index:1">
+    <div class="eyebrow" style="color:#9CC8F2">Competency-based learning</div>
+    <h1>Welcome back, {{ name }}</h1>
+    <p>Your roadmaps share one competency profile. Complete a course once and it counts on every roadmap.</p>
+    <div class="hero-stats">
+      <div><b>{{ d.roadmaps|length }}</b><span>Saved roadmaps</span></div>
+      <div><b>{{ d.stats.completed_courses }}</b><span>Courses completed</span></div>
+      <div><b>{{ d.stats.validated }}</b><span>Validated competencies</span></div>
+      <div><b>{{ d.stats.self_reported }}</b><span>Self-reported</span></div>
+    </div>
+  </div>
+  <div style="position:relative;z-index:1" class="btn-row">
+    {% set nxt = (d.roadmaps|selectattr('next_action')|list) %}
+    {% if nxt %}
+      {% set r0 = nxt[0] %}
+      <a class="btn btn-primary" href="{{ url_for('pathways.course_page', course_id=r0.next_action.course_id, roadmap=r0.id) }}">{{ r0.next_action.verb }}: {{ r0.next_action.title }}</a>
+    {% else %}
+      <a class="btn btn-primary" href="{{ url_for('pathways.goals_page') }}">Choose a goal</a>
+    {% endif %}
+  </div>
+</section>
+
+<div class="demo-banner" role="note">
+  <span class="demo-tag">Demo</span>
+  <span>{{ pw_disclaimer }}</span>
+</div>
+
+<div class="grid-side pw-section">
+  <div>
+    <div class="h2">My roadmaps <span class="count">{{ d.roadmaps|length }}</span></div>
+    <div class="grid-2">
+      {% for r in d.roadmaps %}
+      <article class="pw-card rm-card">
+        <div class="top">
+          <div class="goal-icon" data-icon="{{ r.goal_icon }}"></div>
+          <div style="flex:1;min-width:0">
+            <h3><a href="{{ url_for('pathways.roadmap_page', roadmap_id=r.id) }}" style="color:inherit">{{ r.goal_title }}</a></h3>
+            <div class="xs muted">{{ r.goal_tagline }}</div>
+          </div>
+          <div class="ring sm" style="--p:{{ r.readiness }}" title="Goal readiness"><b>{{ r.readiness }}%</b></div>
+        </div>
+        <div>
+          <div class="row between xs muted"><span>Courses completed</span><b style="color:var(--ink)">{{ r.progress }}%</b></div>
+          <div class="progress {{ 'done' if r.progress == 100 }}" style="margin-top:.3rem"><span style="width:{{ r.progress }}%"></span></div>
+        </div>
+        <div class="next">
+          {% if r.next_action %}
+            <span class="xs muted">Next step</span><br><b>{{ r.next_action.verb }}: {{ r.next_action.title }}</b>
+          {% elif r.readiness >= 100 %}
+            <b style="color:var(--done)">Goal requirements met</b>
+          {% else %}
+            <span class="small muted">No startable step. Open the roadmap to see what is locked or unavailable.</span>
+          {% endif %}
+        </div>
+        <div class="btn-row">
+          <a class="btn btn-brand btn-sm" href="{{ url_for('pathways.roadmap_page', roadmap_id=r.id) }}">Open roadmap</a>
+          {% if r.next_action %}<a class="btn btn-soft btn-sm" href="{{ url_for('pathways.course_page', course_id=r.next_action.course_id, roadmap=r.id) }}">{{ r.next_action.verb }}</a>{% endif %}
+          <span class="xs muted" style="margin-left:auto" title="Recalculated automatically after each change">v{{ r.version }}</span>
+        </div>
+      </article>
+      {% endfor %}
+      <a class="pw-card rm-new" href="{{ url_for('pathways.goals_page') }}">
+        <div class="plus">+</div>
+        <b>{{ 'Create another roadmap' if d.roadmaps else 'Create your first roadmap' }}</b>
+        <span class="small">Pick a target role and see your gaps</span>
+      </a>
+    </div>
+
+    <div class="pw-section">
+      <div class="h2">Learning history</div>
+      <div class="pw-card">
+        {% for h in d.history %}
+        <div class="history-item">
+          <span class="dot {{ h.status }}"></span>
+          <div style="flex:1;min-width:0">
+            <a href="{{ url_for('pathways.course_page', course_id=h.course_id) }}"><b style="color:var(--ink)">{{ h.title }}</b></a>
+            <div class="xs muted">
+              {% if h.status == 'completed' %}Completed{% else %}In progress · {{ h.percent }}%{% endif %}
+              {% if h.best_score is not none %} · best assessment {{ h.best_score }}%{% endif %}
+              {% if h.quiz_attempts %} · {{ h.quiz_attempts }} attempt{{ 's' if h.quiz_attempts != 1 }}{% endif %}
+            </div>
+          </div>
+          <span class="chip {{ 'ok' if h.status == 'completed' else 'brand' }}">{{ 'Completed' if h.status == 'completed' else 'In progress' }}</span>
+        </div>
+        {% else %}
+        <p class="small muted">Nothing started yet. Open a roadmap and choose <b>Start learning</b> on the recommended step.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="h2">Competency profile</div>
+    <div class="pw-card">
+      <div class="row between" style="margin-bottom:.8rem">
+        <div class="row xs"><span class="basis assessment">Validated</span><span class="basis self_reported">Self</span><span class="basis none">None</span></div>
+        <a class="small" href="{{ url_for('pathways.competencies_page') }}">Edit</a>
+      </div>
+      <div class="comp-list">
+        {% for cat, items in d.levels|groupby('category') %}
+          <div class="cat-title">{{ cat }}</div>
+          {% for c in items %}
+          <div class="comp-item">
+            <div class="head"><span class="name">{{ c.name }}</span><span class="lvl">{{ c.level }}</span></div>
+            <div class="bar thin" title="{{ BASIS[c.basis] }}"><span class="fill {{ c.basis }}" style="width:{{ c.level }}%"></span></div>
+          </div>
+          {% endfor %}
+        {% endfor %}
+      </div>
+      <p class="xs muted" style="margin-top:1rem">Scale 0–100. Only passed assessments and labs create <b>validated</b> evidence; resume suggestions count only after you confirm them.</p>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.querySelectorAll('[data-icon]').forEach(function (el) { el.innerHTML = PW.icons[el.getAttribute('data-icon')] || PW.icons.flag; });
+</script>
+{% endblock %}

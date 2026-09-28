@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Assessment · {{ c.title }} · Antah.ai{% endblock %}
+{% set rid = request.args.get('roadmap') %}
+{% block content %}
+<div class="pw-head">
+  <div>
+    <div class="eyebrow"><a href="{{ url_for('pathways.course_page', course_id=c.id, roadmap=rid) }}">← {{ c.title }}</a></div>
+    <h1>Assessment</h1>
+    <p>{{ c.questions|length }} questions · pass mark {{ ((c.assessment.pass_threshold if c.assessment else 0.7) * 100)|round|int }}%. Each question is mapped to a competency. If you score below the pass mark, you get targeted revision and can retry.</p>
+  </div>
+</div>
+{% if error %}
+  <div class="form-error">{{ error }}</div>
+  <a class="btn btn-outline" href="{{ url_for('pathways.course_page', course_id=c.id, roadmap=rid) }}">Back to course</a>
+{% else %}
+<form method="post" action="{{ url_for('pathways.assessment_page', course_id=c.id, roadmap=rid) }}" id="quizForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% for q in c.questions %}
+  <fieldset class="q">
+    <legend><span class="qn">Q{{ loop.index }}.</span>{{ q.text }}</legend>
+    {% for opt in q.options %}
+      <label class="opt"><input type="radio" name="q_{{ q.id }}" value="{{ loop.index0 }}"> <span>{{ opt }}</span></label>
+    {% endfor %}
+  </fieldset>
+  {% endfor %}
+  <div class="row between" style="margin:1.25rem 0 3rem">
+    <span class="small muted" id="answered">0 of {{ c.questions|length }} answered</span>
+    <button class="btn btn-primary" type="submit">Submit answers</button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var f = document.getElementById('quizForm'); if (!f) return;
+  var total = {{ c.questions|length }};
+  f.addEventListener('change', function () {
+    var n = new Set(Array.prototype.map.call(f.querySelectorAll('input[type=radio]:checked'), function (i) { return i.name; })).size;
+    document.getElementById('answered').textContent = n + ' of ' + total + ' answered';
+  });
+  f.addEventListener('submit', function (e) {
+    var n = f.querySelectorAll('input[type=radio]:checked').length;
+    if (n < total && !f.dataset.confirmed) {
+      e.preventDefault(); f.dataset.confirmed = '1';
+      PW.toast((total - n) + ' question(s) unanswered. They count as incorrect. Submit again to confirm.');
+    }
+  });
+})();
+</script>
+{% endblock %}
