@@ -47,7 +47,19 @@ def _resolve_ffmpeg_dir() -> Path:
         "directory containing ffmpeg.exe."
     )
 
-FFMPEG_DIR = _resolve_ffmpeg_dir()
+# Resolved lazily (first read of ``settings.FFMPEG_DIR``, i.e. when a real quiz
+# job starts) so the web app boots on machines without ffmpeg. A failed lookup
+# is not cached, so installing ffmpeg later works without a restart.
+_ffmpeg_dir: Path | None = None
+
+
+def __getattr__(name: str):
+    global _ffmpeg_dir
+    if name == "FFMPEG_DIR":
+        if _ffmpeg_dir is None:
+            _ffmpeg_dir = _resolve_ffmpeg_dir()
+        return _ffmpeg_dir
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 # --- data files -------------------------------------------------------------
 DATASET6_CSV = Path(
